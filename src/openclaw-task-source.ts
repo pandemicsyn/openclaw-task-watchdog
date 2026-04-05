@@ -1,46 +1,81 @@
-import { promisify } from "node:util";
-import { execFile } from "node:child_process";
+import { z } from "zod";
 
-import type { PluginLogger } from "openclaw/plugin-sdk/plugin-entry";
+import type { PluginLogger, OpenClawPluginToolContext } from "openclaw/plugin-sdk/plugin-entry";
 
-import { parseTaskRunsFromUnknown } from "./plugin-io.js";
 import type { DetachedWorkTaskRun } from "./types.js";
 
-const execFileAsync = promisify(execFile);
+const taskRunViewSchema = z
+  .object({
+    id: z.string(),
+    runtime: z.enum(["cron", "acp", "subagent", "cli"]),
+    status: z.string(),
+    deliveryStatus: z.string(),
+    startedAt: z.number().optional(),
+    endedAt: z.number().optional(),
+    sourceId: z.string().optional(),
+    runId: z.string().optional(),
+    label: z.string().optional(),
+    error: z.string().optional(),
+  })
+  .passthrough();
 
-export async function fetchTaskRuns(logger: PluginLogger, runtimeSystem: unknown): Promise<DetachedWorkTaskRun[]> {
-  const runCommandWithTimeout = (runtimeSystem as { runCommandWithTimeout?: unknown }).runCommandWithTimeout;
+const taskRunListSchema = z.array(taskRunViewSchema);
 
-  let stdout = "";
+function mapTaskRun(view: z.infer<typeof taskRunViewSchema>): DetachedWorkTaskRun {
+  return {
+    taskId: view.id,
+    runtime: view.runtime,
+    status: view.status,
+    deliveryStatus: view.deliveryStatus,
+    ...(typeof view.startedAt === "number" ? { startedAt: view.startedAt } : {}),
+    ...(typeof view.endedAt === "number" ? { endedAt: view.endedAt } : {}),
+    ...(typeof view.sourceId === "string" ? { sourceId: view.sourceId } : {}),
+    ...(typeof view.runId === "string" ? { runId: view.runId } : {}),
+    ...(typeof view.label === "string" ? { label: view.label } : {}),
+    ...(typeof view.error === "string" ? { detail: view.error } : {}),
+  };
+}
+
+type RuntimeTaskRunsSurface = {
+  tasks: {
+    runs: {
+      bindSession: (params: { sessionKey: string }) => { list: () => unknown };
+      fromToolContext: (
+        ctx: Pick<OpenClawPluginToolContext, "sessionKey" | "deliveryContext">,
+      ) => { list: () => unknown };
+    };
+  };
+};
+
+export function fetchTaskRunsFromRuntimeBySession(
+  logger: PluginLogger,
+  runtime: RuntimeTaskRunsSurface,
+  sessionKey: string,
+): DetachedWorkTaskRun[] {
   try {
-    if (typeof runCommandWithTimeout === "function") {
-      const res = (await (runCommandWithTimeout as (
-        cmd: string,
-        args: string[],
-        opts: { timeoutMs: number },
-      ) => Promise<{ stdout?: string }>)("openclaw", ["tasks", "list", "--json"], {
-        timeoutMs: 20_000,
-      })) as { stdout?: string };
-      stdout = res.stdout ?? "";
-    } else {
-      const res = await execFileAsync("openclaw", ["tasks", "list", "--json"], { timeout: 20_000 });
-      stdout = res.stdout ?? "";
-    }
+    const bound = runtime.tasks.runs.bindSession({ sessionKey });
+    const views = taskRunListSchema.parse(bound.list());
+    return views.map(mapTaskRun);
   } catch (error) {
     logger.warn(
-      `task-watchdog: failed to fetch tasks from openclaw CLI: ${error instanceof Error ? error.message : String(error)}`,
+      `task-watchdog: failed to fetch task runs from runtime session binding: ${error instanceof Error ? error.message : String(error)}`,
     );
     return [];
   }
+}
 
-  if (!stdout.trim()) return [];
-
+export function fetchTaskRunsFromRuntimeByToolContext(
+  logger: PluginLogger,
+  runtime: RuntimeTaskRunsSurface,
+  ctx: Pick<OpenClawPluginToolContext, "sessionKey" | "deliveryContext">,
+): DetachedWorkTaskRun[] {
   try {
-    const parsed = JSON.parse(stdout) as unknown;
-    return parseTaskRunsFromUnknown(parsed);
+    const bound = runtime.tasks.runs.fromToolContext(ctx);
+    const views = taskRunListSchema.parse(bound.list());
+    return views.map(mapTaskRun);
   } catch (error) {
     logger.warn(
-      `task-watchdog: failed to parse openclaw tasks JSON: ${error instanceof Error ? error.message : String(error)}`,
+      `task-watchdog: failed to fetch task runs from runtime tool context: ${error instanceof Error ? error.message : String(error)}`,
     );
     return [];
   }

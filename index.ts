@@ -1,10 +1,10 @@
 import { Type } from "@sinclair/typebox";
-import { definePluginEntry } from "openclaw/plugin-sdk/plugin-entry";
+import { definePluginEntry, type OpenClawPluginToolContext } from "openclaw/plugin-sdk/plugin-entry";
 import { z } from "zod";
 
 import { runDetachedWorkPipeline } from "./src/engine.js";
 import { parsePluginConfig } from "./src/plugin-config.js";
-import { fetchTaskRuns } from "./src/openclaw-task-source.js";
+import { fetchTaskRunsFromRuntimeByToolContext } from "./src/openclaw-task-source.js";
 import { createTaskWatchdogService } from "./src/plugin-service.js";
 import type { DetachedWorkHealthState } from "./src/types.js";
 
@@ -27,10 +27,15 @@ export default definePluginEntry({
         parameters: Type.Object({
           dryRun: Type.Optional(Type.Boolean({ default: false })),
         }),
-        async execute(_id, params) {
+        async execute(_id, params, ctx?: OpenClawPluginToolContext) {
           const parsed = checkToolInputSchema.parse(params ?? {});
           const cfg = parsePluginConfig(api.pluginConfig ?? {});
-          const runs = await fetchTaskRuns(api.logger, api.runtime.system);
+          const runs = ctx
+            ? fetchTaskRunsFromRuntimeByToolContext(api.logger, api.runtime, {
+                sessionKey: ctx.sessionKey,
+                deliveryContext: ctx.deliveryContext,
+              })
+            : [];
 
           const out = await runDetachedWorkPipeline({
             runs,

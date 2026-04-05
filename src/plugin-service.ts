@@ -2,11 +2,13 @@ import type { OpenClawPluginApi, OpenClawPluginService } from "openclaw/plugin-s
 
 import { runDetachedWorkPipeline } from "./engine.js";
 import { parsePluginConfig } from "./plugin-config.js";
-import { fetchTaskRuns } from "./openclaw-task-source.js";
+import { fetchTaskRunsFromRuntimeBySession } from "./openclaw-task-source.js";
+import { createStateStore } from "./state-store.js";
 import type { DetachedWorkHealthState } from "./types.js";
 
 export function createTaskWatchdogService(api: OpenClawPluginApi): OpenClawPluginService {
   let timer: NodeJS.Timeout | null = null;
+  const store = createStateStore(api.runtime.state.resolveStateDir());
   let state: DetachedWorkHealthState = {
     dedupe: {},
     lastSeenTaskStateByTaskId: {},
@@ -16,7 +18,7 @@ export function createTaskWatchdogService(api: OpenClawPluginApi): OpenClawPlugi
     const cfg = parsePluginConfig(api.pluginConfig ?? {});
     if (!cfg.enabled) return;
 
-    const runs = await fetchTaskRuns(api.logger, api.runtime.system);
+    const runs = fetchTaskRunsFromRuntimeBySession(api.logger, api.runtime, "main");
     const out = await runDetachedWorkPipeline({
       runs,
       config: cfg.detachedWork,
@@ -34,6 +36,7 @@ export function createTaskWatchdogService(api: OpenClawPluginApi): OpenClawPlugi
     });
 
     state = out.actions.nextState;
+    await store.save(api.logger, state);
 
     api.logger.info(
       `task-watchdog: check complete runs=${runs.length} events=${out.detector.events.length} actions=${out.actions.results.length}`,
@@ -49,8 +52,8 @@ export function createTaskWatchdogService(api: OpenClawPluginApi): OpenClawPlugi
         return;
       }
 
-      await runOnce();
-      timer = setInterval(() => {
+      state = await store.load(api.logger);
+      await runOnce();      timer = setInterval(() => {
         void runOnce();
       }, cfg.pollIntervalMs);
 

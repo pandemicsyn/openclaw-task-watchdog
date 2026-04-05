@@ -13,6 +13,14 @@ This repository is now wired as a native OpenClaw plugin:
   - background service: `task-watchdog-service`
   - optional tool: `task_watchdog_check`
 
+## Runtime integration status
+
+- Uses **OpenClaw plugin runtime task APIs** (`api.runtime.tasks.runs.bindSession` and `fromToolContext`) for task ingestion.
+- No CLI shell-out path is used for core task ingestion anymore.
+- Persisted watchdog state is stored under plugin state dir:
+  - `task-watchdog/health-state.json`
+  - includes versioned state envelope (`version: 1`).
+
 ## Zod at I/O boundaries
 
 All key I/O boundaries are validated with zod:
