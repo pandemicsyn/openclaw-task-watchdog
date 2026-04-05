@@ -4,6 +4,7 @@ import { runDetachedWorkPipeline } from "./engine.js";
 import { parsePluginConfig } from "./plugin-config.js";
 import { fetchTaskRunsFromRuntimeBySession } from "./openclaw-task-source.js";
 import { createStateStore } from "./state-store.js";
+import { publishMainSessionEvent } from "./system-event-publisher.js";
 import type { DetachedWorkHealthState } from "./types.js";
 
 export function createTaskWatchdogService(api: OpenClawPluginApi): OpenClawPluginService {
@@ -24,14 +25,7 @@ export function createTaskWatchdogService(api: OpenClawPluginApi): OpenClawPlugi
       config: cfg.detachedWork,
       previousState: state,
       mainSessionSystemEvent: async ({ text, mode }) => {
-        const enqueueSystemEvent = (api.runtime.system as { enqueueSystemEvent?: unknown }).enqueueSystemEvent;
-        if (typeof enqueueSystemEvent === "function") {
-          await (enqueueSystemEvent as (evt: unknown) => Promise<void>)({
-            type: "systemEvent",
-            text,
-            mode,
-          });
-        }
+        await publishMainSessionEvent(api, { text, mode });
       },
     });
 

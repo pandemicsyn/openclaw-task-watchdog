@@ -12,6 +12,9 @@ This repository is now wired as a native OpenClaw plugin:
 - plugin registers:
   - background service: `task-watchdog-service`
   - optional tool: `task_watchdog_check`
+  - commands:
+    - `task-watchdog-check`
+    - `task-watchdog-status`
 
 ## Runtime integration status
 
@@ -66,6 +69,16 @@ All key I/O boundaries are validated with zod:
 - `pnpm test`
 - `pnpm run typecheck`
 - `pnpm run build`
+
+## Operator surface
+
+The plugin now exposes explicit operator-facing surfaces:
+
+- command: `task-watchdog-check`
+- command: `task-watchdog-status`
+- tool: `task_watchdog_check`
+
+These provide on-demand execution and snapshot visibility in addition to background service polling.
 
 ## Notes
 

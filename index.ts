@@ -2,16 +2,10 @@ import { Type } from "@sinclair/typebox";
 import { definePluginEntry, type OpenClawPluginToolContext } from "openclaw/plugin-sdk/plugin-entry";
 import { z } from "zod";
 
-import { runDetachedWorkPipeline } from "./src/engine.js";
 import { parsePluginConfig } from "./src/plugin-config.js";
-import { fetchTaskRunsFromRuntimeByToolContext } from "./src/openclaw-task-source.js";
+import { createTaskWatchdogCommands } from "./src/operator-surface.js";
 import { createTaskWatchdogService } from "./src/plugin-service.js";
-import type { DetachedWorkHealthState } from "./src/types.js";
-
-let toolState: DetachedWorkHealthState = {
-  dedupe: {},
-  lastSeenTaskStateByTaskId: {},
-};
+import { publishMainSessionEvent } from "./src/system-event-publisher.js";
 
 export default definePluginEntry({
   id: "task-watchdog",
@@ -19,6 +13,10 @@ export default definePluginEntry({
   description: "Detached Work Health monitoring and alerting for OpenClaw tasks",
   register(api) {
     api.registerService(createTaskWatchdogService(api));
+
+    for (const command of createTaskWatchdogCommands(api)) {
+      api.registerCommand(command);
+    }
 
     api.registerTool(
       {
@@ -29,32 +27,33 @@ export default definePluginEntry({
         }),
         async execute(_id, params, ctx?: OpenClawPluginToolContext) {
           const parsed = checkToolInputSchema.parse(params ?? {});
+          const { createStateStore } = await import("./src/state-store.js");
+          const { fetchTaskRunsFromRuntimeBySession, fetchTaskRunsFromRuntimeByToolContext } = await import(
+            "./src/openclaw-task-source.js"
+          );
+          const { runDetachedWorkPipeline } = await import("./src/engine.js");
+
           const cfg = parsePluginConfig(api.pluginConfig ?? {});
+          const store = createStateStore(api.runtime.state.resolveStateDir());
+          const previousState = await store.load(api.logger);
           const runs = ctx
             ? fetchTaskRunsFromRuntimeByToolContext(api.logger, api.runtime, {
                 sessionKey: ctx.sessionKey,
-                deliveryContext: ctx.deliveryContext,
+                ...(ctx.deliveryContext ? { deliveryContext: ctx.deliveryContext } : {}),
               })
-            : [];
+            : fetchTaskRunsFromRuntimeBySession(api.logger, api.runtime, "main");
 
           const out = await runDetachedWorkPipeline({
             runs,
             config: cfg.detachedWork,
-            previousState: toolState,
+            previousState,
             mainSessionSystemEvent: async ({ text, mode }) => {
               if (parsed.dryRun) return;
-              const enqueueSystemEvent = (api.runtime.system as { enqueueSystemEvent?: unknown }).enqueueSystemEvent;
-              if (typeof enqueueSystemEvent === "function") {
-                await (enqueueSystemEvent as (evt: unknown) => Promise<void>)({
-                  type: "systemEvent",
-                  text,
-                  mode,
-                });
-              }
+              await publishMainSessionEvent(api, { text, mode });
             },
           });
 
-          toolState = out.actions.nextState;
+          await store.save(api.logger, out.actions.nextState);
 
           const summary = [
             `runs=${runs.length}`,
