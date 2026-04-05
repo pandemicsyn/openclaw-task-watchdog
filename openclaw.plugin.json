@@ -1,0 +1,184 @@
+{
+  "id": "task-watchdog",
+  "name": "Task Watchdog",
+  "description": "Detached Work Health monitoring and alerting for OpenClaw tasks",
+  "version": "0.1.0",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "thresholdsByRuntime": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "cron": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "staleRunningMinutes": { "type": "number", "minimum": 1 },
+              "criticalRunningMinutes": { "type": "number", "minimum": 1 },
+              "failureStreakCount": { "type": "number", "minimum": 1 },
+              "lookbackMinutes": { "type": "number", "minimum": 1 }
+            }
+          },
+          "acp": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "staleRunningMinutes": { "type": "number", "minimum": 1 },
+              "criticalRunningMinutes": { "type": "number", "minimum": 1 },
+              "failureStreakCount": { "type": "number", "minimum": 1 },
+              "lookbackMinutes": { "type": "number", "minimum": 1 }
+            }
+          },
+          "subagent": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "staleRunningMinutes": { "type": "number", "minimum": 1 },
+              "criticalRunningMinutes": { "type": "number", "minimum": 1 },
+              "failureStreakCount": { "type": "number", "minimum": 1 },
+              "lookbackMinutes": { "type": "number", "minimum": 1 }
+            }
+          },
+          "cli": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "staleRunningMinutes": { "type": "number", "minimum": 1 },
+              "criticalRunningMinutes": { "type": "number", "minimum": 1 },
+              "failureStreakCount": { "type": "number", "minimum": 1 },
+              "lookbackMinutes": { "type": "number", "minimum": 1 }
+            }
+          }
+        }
+      },
+      "rules": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "eventTypes", "actionIds"],
+          "properties": {
+            "id": { "type": "string", "minLength": 1 },
+            "enabled": { "type": "boolean" },
+            "eventTypes": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "enum": [
+                  "task_failed",
+                  "task_timed_out",
+                  "task_lost",
+                  "task_stale_running",
+                  "delivery_failed",
+                  "failure_streak",
+                  "recovered"
+                ]
+              }
+            },
+            "runtimes": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": ["cron", "acp", "subagent", "cli"]
+              }
+            },
+            "minSeverity": {
+              "type": "string",
+              "enum": ["info", "warning", "critical"]
+            },
+            "actionIds": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "type": "string", "minLength": 1 }
+            },
+            "cooldownMinutes": { "type": "number", "minimum": 0 }
+          }
+        }
+      },
+      "actions": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["id", "kind"],
+          "oneOf": [
+            {
+              "properties": {
+                "id": { "type": "string", "minLength": 1 },
+                "kind": { "const": "webhook" },
+                "enabled": { "type": "boolean" },
+                "url": { "type": "string", "format": "uri" },
+                "secret": { "type": "string" },
+                "headers": {
+                  "type": "object",
+                  "additionalProperties": { "type": "string" }
+                },
+                "timeoutMs": { "type": "number", "minimum": 1 }
+              },
+              "required": ["id", "kind", "url"],
+              "additionalProperties": false
+            },
+            {
+              "properties": {
+                "id": { "type": "string", "minLength": 1 },
+                "kind": { "const": "email" },
+                "enabled": { "type": "boolean" },
+                "provider": { "type": "string", "enum": ["resend", "nodemailer"] },
+                "to": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": { "type": "string", "format": "email" }
+                },
+                "from": { "type": "string", "format": "email" },
+                "subjectPrefix": { "type": "string" }
+              },
+              "required": ["id", "kind", "provider", "to"],
+              "additionalProperties": false
+            },
+            {
+              "properties": {
+                "id": { "type": "string", "minLength": 1 },
+                "kind": { "const": "main_session_prompt" },
+                "enabled": { "type": "boolean" },
+                "wakeMode": { "type": "string", "enum": ["now", "next-heartbeat"] },
+                "prefix": { "type": "string" }
+              },
+              "required": ["id", "kind"],
+              "additionalProperties": false
+            }
+          ]
+        }
+      },
+      "emailProviders": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "resend": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["apiKey", "defaultFrom"],
+            "properties": {
+              "apiKey": { "type": "string", "minLength": 1 },
+              "defaultFrom": { "type": "string", "format": "email" }
+            }
+          },
+          "nodemailer": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["host", "port", "defaultFrom"],
+            "properties": {
+              "host": { "type": "string", "minLength": 1 },
+              "port": { "type": "number", "minimum": 1 },
+              "secure": { "type": "boolean" },
+              "user": { "type": "string" },
+              "pass": { "type": "string" },
+              "defaultFrom": { "type": "string", "format": "email" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

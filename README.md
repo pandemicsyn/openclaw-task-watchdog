@@ -1,12 +1,32 @@
 # openclaw-task-watchdog
 
-Detached Work Health watchdog for OpenClaw tasks.
+Detached Work Health watchdog plugin for OpenClaw tasks.
+
+## OpenClaw plugin integration
+
+This repository is now wired as a native OpenClaw plugin:
+
+- `index.ts` exports plugin entry via `definePluginEntry`
+- `openclaw.plugin.json` provides plugin manifest + config schema
+- `package.json` includes the `openclaw` metadata block
+- plugin registers:
+  - background service: `task-watchdog-service`
+  - optional tool: `task_watchdog_check`
+
+## Zod at I/O boundaries
+
+All key I/O boundaries are validated with zod:
+
+- plugin config input (`parsePluginConfig`)
+- detached-work config (`parseDetachedWorkConfig`)
+- runtime task JSON input (`parseTaskRunsFromUnknown`)
+- tool invocation params (`checkToolInputSchema`)
 
 ## Implemented phases
 
 ### Phase 0 — foundation
 
-- Config schema (`zod`) for thresholds, rules, actions, provider config
+- Config schema (zod)
 - Alert/event/action model
 - Dedupe/cooldown state
 - Health snapshot structure
@@ -25,12 +45,12 @@ Detached Work Health watchdog for OpenClaw tasks.
 
 ### Phase 2 — actions
 
-- Webhook action (real HTTP POST via fetch)
-- Main-session prompt action (system-event publisher bridge)
-- Email rendering via React Email (`@react-email/render`)
+- Webhook action (HTTP POST)
+- Main-session prompt action (system-event bridge)
+- Email rendering via React Email
 - Email providers:
-  - Resend (SDK)
-  - Nodemailer (SMTP transport)
+  - Resend
+  - Nodemailer
 - Rule/action engine with cooldown + dedupe + escalation bypass
 
 ## Scripts

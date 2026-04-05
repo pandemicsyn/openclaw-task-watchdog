@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Detached Work Health watchdog for OpenClaw tasks (cron-first)",
+  "description": "Detached Work Health watchdog plugin for OpenClaw tasks",
   "license": "MIT",
   "engines": {
     "node": ">=22"
@@ -13,8 +13,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "format": "oxfmt \"src/**/*.ts\" \"tests/**/*.ts\"",
-    "format:check": "oxfmt --check \"src/**/*.ts\" \"tests/**/*.ts\"",
+    "format": "oxfmt \"src/**/*.ts\" \"tests/**/*.ts\" \"index.ts\"",
+    "format:check": "oxfmt --check \"src/**/*.ts\" \"tests/**/*.ts\" \"index.ts\"",
     "lint": "pnpm run format:check && pnpm run typecheck"
   },
   "devDependencies": {
@@ -28,9 +28,24 @@
   "packageManager": "pnpm@10.17.0",
   "dependencies": {
     "@react-email/render": "^2.0.5",
+    "@sinclair/typebox": "^0.34.49",
     "nodemailer": "^8.0.4",
+    "openclaw": "^2026.4.2",
     "react": "^19.2.4",
     "resend": "^6.10.0",
     "zod": "^4.3.6"
+  },
+  "openclaw": {
+    "extensions": [
+      "./index.ts"
+    ],
+    "compat": {
+      "pluginApi": ">=2026.4.2",
+      "minGatewayVersion": "2026.4.2"
+    },
+    "build": {
+      "openclawVersion": "2026.4.2",
+      "pluginSdkVersion": "2026.4.2"
+    }
   }
 }
