@@ -9,6 +9,16 @@ export async function publishMainSessionEvent(
   });
 
   if (input.mode === "now") {
-    api.runtime.system.requestHeartbeatNow();
+    if (typeof api.runtime.system.runHeartbeatOnce === "function") {
+      await api.runtime.system.runHeartbeatOnce({
+        reason: "task-watchdog:main-session-alert",
+        sessionKey: "main",
+        heartbeat: { target: "last" },
+      });
+    } else {
+      api.runtime.system.requestHeartbeatNow({
+        reason: "task-watchdog:main-session-alert",
+      });
+    }
   }
 }

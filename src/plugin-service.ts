@@ -9,6 +9,8 @@ import type { DetachedWorkHealthState } from "./types.js";
 
 export function createTaskWatchdogService(api: OpenClawPluginApi): OpenClawPluginService {
   let timer: NodeJS.Timeout | null = null;
+  let isRunning = false;
+  let skippedOverlapCount = 0;
   const store = createStateStore(api.runtime.state.resolveStateDir());
   let state: DetachedWorkHealthState = {
     dedupe: {},
@@ -17,25 +19,41 @@ export function createTaskWatchdogService(api: OpenClawPluginApi): OpenClawPlugi
   };
 
   const runOnce = async (): Promise<void> => {
-    const cfg = parsePluginConfig(api.pluginConfig ?? {});
-    if (!cfg.enabled) return;
+    if (isRunning) {
+      skippedOverlapCount += 1;
+      if (skippedOverlapCount === 1 || skippedOverlapCount % 10 === 0) {
+        api.logger.warn(
+          `task-watchdog: skipped overlapping service tick count=${skippedOverlapCount}`,
+        );
+      }
+      return;
+    }
 
-    const runs = fetchTaskRunsFromRuntimeBySession(api.logger, api.runtime, "main");
-    const out = await runDetachedWorkPipeline({
-      runs,
-      config: cfg.detachedWork,
-      previousState: state,
-      mainSessionSystemEvent: async ({ text, mode }) => {
-        await publishMainSessionEvent(api, { text, mode });
-      },
-    });
+    isRunning = true;
+    try {
+      const cfg = parsePluginConfig(api.pluginConfig ?? {});
+      if (!cfg.enabled) return;
 
-    state = out.actions.nextState;
-    await store.save(api.logger, state);
+      const runs = fetchTaskRunsFromRuntimeBySession(api.logger, api.runtime, "main");
+      const out = await runDetachedWorkPipeline({
+        runs,
+        config: cfg.detachedWork,
+        previousState: state,
+        mainSessionSystemEvent: async ({ text, mode }) => {
+          await publishMainSessionEvent(api, { text, mode });
+        },
+      });
 
-    api.logger.info(
-      `task-watchdog: check complete runs=${runs.length} events=${out.detector.events.length} actions=${out.actions.results.length}`,
-    );
+      state = out.actions.nextState;
+      await store.save(api.logger, state);
+      skippedOverlapCount = 0;
+
+      api.logger.info(
+        `task-watchdog: check complete runs=${runs.length} events=${out.detector.events.length} actions=${out.actions.results.length}`,
+      );
+    } finally {
+      isRunning = false;
+    }
   };
 
   return {

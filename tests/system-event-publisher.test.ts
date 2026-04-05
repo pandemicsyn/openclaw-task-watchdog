@@ -4,7 +4,12 @@ import { publishMainSessionEvent } from "../src/system-event-publisher.js";
 
 describe("publishMainSessionEvent", () => {
   it("enqueues event and requests heartbeat for now mode", async () => {
-    const calls: { text?: string; sessionKey?: string; heartbeatNow?: boolean } = {};
+    const calls: {
+      text?: string;
+      sessionKey?: string;
+      heartbeatNow?: boolean;
+      heartbeatOnce?: boolean;
+    } = {};
     const api = {
       runtime: {
         system: {
@@ -16,6 +21,10 @@ describe("publishMainSessionEvent", () => {
           requestHeartbeatNow: () => {
             calls.heartbeatNow = true;
           },
+          runHeartbeatOnce: async (_opts: unknown) => {
+            calls.heartbeatOnce = true;
+            return { status: "ok" };
+          },
         },
       },
     };
@@ -24,6 +33,6 @@ describe("publishMainSessionEvent", () => {
 
     expect(calls.text).toBe("hello");
     expect(calls.sessionKey).toBe("main");
-    expect(calls.heartbeatNow).toBe(true);
+    expect(calls.heartbeatOnce).toBe(true);
   });
 });

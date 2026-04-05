@@ -335,6 +335,15 @@ Workflow file:
 
 This plugin is currently **cron-first** by design.
 
+**What is implemented today:**
+- cron detached-work health detection
+- webhook / main-session / email actions
+
+**What is not implemented yet:**
+- ACP detection
+- subagent detection
+- CLI detached-work detection
+
 The model/config supports additional runtimes:
 
 - `cron`
