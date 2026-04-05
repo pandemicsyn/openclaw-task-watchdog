@@ -1,0 +1,26 @@
+{
+  "name": "openclaw-task-watchdog",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Detached Work Health watchdog for OpenClaw tasks (cron-first)",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "format": "oxfmt \"src/**/*.ts\" \"tests/**/*.ts\"",
+    "format:check": "oxfmt --check \"src/**/*.ts\" \"tests/**/*.ts\"",
+    "lint": "pnpm run format:check && pnpm run typecheck"
+  },
+  "devDependencies": {
+    "@types/node": "^24.5.2",
+    "typescript": "^5.9.2",
+    "vitest": "^2.1.9"
+  },
+  "packageManager": "pnpm@10.17.0"
+}
