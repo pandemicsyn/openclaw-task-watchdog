@@ -1,3 +1,5 @@
+import { renderAlertEmail } from "./email.js";
+
 import type {
   DetachedWorkActionExecutionResult,
   DetachedWorkActionExecutor,
@@ -8,13 +10,6 @@ import type {
   DetachedWorkRuleDecision,
   DetachedWorkWebhookClient,
 } from "./types.js";
-
-function renderEventText(event: DetachedWorkAlertEvent): string {
-  const runtime = event.runtime;
-  const label = event.task.label ? ` \"${event.task.label}\"` : "";
-  const detail = event.detail ? ` Detail: ${event.detail}` : "";
-  return `${event.severity.toUpperCase()} ${runtime} ${event.eventType}${label}. ${event.summary}.${detail}`;
-}
 
 function webhookPayload(event: DetachedWorkAlertEvent): string {
   return JSON.stringify(
@@ -39,14 +34,6 @@ function webhookHeaders(action: Extract<DetachedWorkAlertAction, { kind: "webhoo
   };
 }
 
-function emailSubject(
-  action: Extract<DetachedWorkAlertAction, { kind: "email" }>,
-  event: DetachedWorkAlertEvent,
-): string {
-  const prefix = action.subjectPrefix ?? "[Detached Work Health]";
-  return `${prefix} ${event.severity.toUpperCase()} ${event.runtime} ${event.eventType}`;
-}
-
 export class DefaultDetachedWorkActionExecutor implements DetachedWorkActionExecutor {
   constructor(
     private readonly webhookClient: DetachedWorkWebhookClient,
@@ -68,14 +55,17 @@ export class DefaultDetachedWorkActionExecutor implements DetachedWorkActionExec
           ...(typeof action.timeoutMs === "number" ? { timeoutMs: action.timeoutMs } : {}),
         });
       } else if (action.kind === "email") {
-        const text = renderEventText(event);
+        const rendered = await renderAlertEmail({
+          event,
+          ...(typeof action.subjectPrefix === "string" ? { subjectPrefix: action.subjectPrefix } : {}),
+        });
         await this.emailSender.send({
           provider: action.provider,
           to: action.to,
           ...(typeof action.from === "string" ? { from: action.from } : {}),
-          subject: emailSubject(action, event),
-          text,
-          html: `<p>${text}</p>`,
+          subject: rendered.subject,
+          text: rendered.text,
+          html: rendered.html,
         });
       } else {
         const prefix = action.prefix ? `${action.prefix} ` : "Detached Work Health alert: ";

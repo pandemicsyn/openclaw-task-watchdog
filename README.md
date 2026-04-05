@@ -2,32 +2,36 @@
 
 Detached Work Health watchdog for OpenClaw tasks.
 
-## Milestone status
+## Implemented phases
 
-### Milestone 1 (complete)
+### Phase 0 — foundation
 
-- Task runtime reader abstraction
-- Cron-only runtime filtering
-- Alert event generation for:
+- Config schema (`zod`) for thresholds, rules, actions, provider config
+- Alert/event/action model
+- Dedupe/cooldown state
+- Health snapshot structure
+
+### Phase 1 — cron-first detector
+
+- Task runtime input model
+- Cron filtering
+- Detection for:
   - `task_failed`
   - `task_timed_out`
   - `task_lost`
   - `task_stale_running`
   - `delivery_failed`
-- Health snapshot builder
-- Baseline state tracking for transition detection
+- Health events + snapshot output
 
-### Milestone 2 (complete)
+### Phase 2 — actions
 
-- Rule model + action model (webhook/email/main session prompt)
-- Rule engine for event/action matching
-- Cooldown + dedupe tracking
-- Escalation-aware suppression bypass (`warning -> critical`)
-- Action executor path for:
-  - webhook
-  - email
-  - main session prompt
-- End-to-end action processing pipeline (`processAlertActions`)
+- Webhook action (real HTTP POST via fetch)
+- Main-session prompt action (system-event publisher bridge)
+- Email rendering via React Email (`@react-email/render`)
+- Email providers:
+  - Resend (SDK)
+  - Nodemailer (SMTP transport)
+- Rule/action engine with cooldown + dedupe + escalation bypass
 
 ## Scripts
 
@@ -35,4 +39,6 @@ Detached Work Health watchdog for OpenClaw tasks.
 - `pnpm run typecheck`
 - `pnpm run build`
 
-See implementation notes in `plans/deviations-log.md`.
+## Notes
+
+See `plans/deviations-log.md` for scoped deviations and follow-ups.

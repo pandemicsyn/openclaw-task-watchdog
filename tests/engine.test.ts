@@ -1,17 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  InMemoryEmailSender,
-  InMemoryMainSessionPublisher,
-  InMemoryWebhookClient,
-} from "../src/action-executor.js";
-import { processAlertActions } from "../src/engine.js";
-import type {
-  DetachedWorkAlertAction,
-  DetachedWorkAlertEvent,
-  DetachedWorkAlertRule,
-  DetachedWorkDetectorOutput,
-} from "../src/types.js";
+import { processAlertActions, runDetachedWorkPipeline } from "../src/engine.js";
+import type { DetachedWorkAlertEvent, DetachedWorkDetectorOutput, DetachedWorkTaskRun } from "../src/types.js";
 
 const event: DetachedWorkAlertEvent = {
   id: "event-1",
@@ -55,40 +45,67 @@ const detector: DetachedWorkDetectorOutput = {
   },
 };
 
-const rules: DetachedWorkAlertRule[] = [
-  {
-    id: "rule-1",
-    eventTypes: ["task_failed"],
-    actionIds: ["webhook-1", "prompt-1"],
-    cooldownMinutes: 10,
-  },
-];
-
-const actions: DetachedWorkAlertAction[] = [
-  { id: "webhook-1", kind: "webhook", url: "https://example.test/hook" },
-  { id: "prompt-1", kind: "main_session_prompt", wakeMode: "now" },
-];
-
 describe("processAlertActions", () => {
-  it("runs rule engine + actions and returns merged next state", async () => {
-    const webhooks = new InMemoryWebhookClient();
-    const emails = new InMemoryEmailSender();
-    const prompts = new InMemoryMainSessionPublisher();
+  it("runs rule engine + concrete action path and returns merged next state", async () => {
+    const sentEvents: Array<{ text: string; mode: "now" | "next-heartbeat" }> = [];
 
     const output = await processAlertActions({
       detector,
-      rules,
-      actions,
-      webhookClient: webhooks,
-      emailSender: emails,
-      mainSessionPublisher: prompts,
+      config: {
+        actions: [{ id: "prompt-1", kind: "main_session_prompt", wakeMode: "now" }],
+        rules: [
+          {
+            id: "rule-1",
+            eventTypes: ["task_failed"],
+            actionIds: ["prompt-1"],
+            cooldownMinutes: 10,
+          },
+        ],
+      },
+      mainSessionSystemEvent: async (input) => {
+        sentEvents.push(input);
+      },
       now: event.createdAt,
     });
 
-    expect(output.results).toHaveLength(2);
-    expect(webhooks.requests).toHaveLength(1);
-    expect(prompts.messages).toHaveLength(1);
+    expect(output.results).toHaveLength(1);
+    expect(output.results[0]?.ok).toBe(true);
+    expect(sentEvents).toHaveLength(1);
     expect(output.nextState.dedupe).not.toEqual({});
     expect(output.nextState.lastSeenTaskStateByTaskId["task-1"]).toBe("failed|sent");
+  });
+});
+
+describe("runDetachedWorkPipeline", () => {
+  it("detects cron failure and emits configured prompt action", async () => {
+    const sentEvents: Array<{ text: string; mode: "now" | "next-heartbeat" }> = [];
+    const now = Date.UTC(2026, 3, 5, 8, 0, 0);
+
+    const runs: DetachedWorkTaskRun[] = [
+      {
+        taskId: "task-77",
+        runtime: "cron",
+        status: "failed",
+        deliveryStatus: "sent",
+        startedAt: now - 60_000,
+        endedAt: now - 1_000,
+      },
+    ];
+
+    const out = await runDetachedWorkPipeline({
+      runs,
+      config: {
+        actions: [{ id: "prompt-1", kind: "main_session_prompt", wakeMode: "now" }],
+        rules: [{ id: "rule-1", eventTypes: ["task_failed"], actionIds: ["prompt-1"] }],
+      },
+      mainSessionSystemEvent: async (input) => {
+        sentEvents.push(input);
+      },
+      now,
+    });
+
+    expect(out.detector.events.find((e) => e.eventType === "task_failed")).toBeTruthy();
+    expect(out.actions.results).toHaveLength(1);
+    expect(sentEvents).toHaveLength(1);
   });
 });
