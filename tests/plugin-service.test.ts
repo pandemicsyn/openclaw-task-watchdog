@@ -4,11 +4,17 @@ import { createTaskWatchdogService } from "../src/plugin-service.js";
 
 function createApi() {
   const warnings: string[] = [];
-  let resolveList: (() => void) | null = null;
-  let callCount = 0;
+  let heartbeatRelease: (() => void) | null = null;
 
   const api = {
-    pluginConfig: { enabled: true, pollIntervalMs: 10, detachedWork: { rules: [], actions: [] } },
+    pluginConfig: {
+      enabled: true,
+      pollIntervalMs: 10,
+      detachedWork: {
+        actions: [{ id: "prompt-1", kind: "main_session_prompt", wakeMode: "now" }],
+        rules: [{ id: "rule-1", eventTypes: ["task_failed"], actionIds: ["prompt-1"] }],
+      },
+    },
     logger: {
       debug: () => {},
       info: () => {},
@@ -20,25 +26,31 @@ function createApi() {
       tasks: {
         runs: {
           bindSession: () => ({
-            list: async () => {
-              callCount += 1;
-              await new Promise<void>((resolve) => {
-                resolveList = resolve;
-              });
-              return [];
-            },
+            list: () => [
+              {
+                id: "task-1",
+                runtime: "cron",
+                status: "failed",
+                deliveryStatus: "delivered",
+              },
+            ],
           }),
         },
       },
       system: {
         enqueueSystemEvent: () => true,
         requestHeartbeatNow: () => {},
-        runHeartbeatOnce: async () => ({ status: "ok" }),
+        runHeartbeatOnce: async () => {
+          await new Promise<void>((resolve) => {
+            heartbeatRelease = resolve;
+          });
+          return { status: "ok" };
+        },
       },
     },
   };
 
-  return { api, warnings, release: () => resolveList?.(), getCallCount: () => callCount };
+  return { api, warnings, release: () => heartbeatRelease?.() };
 }
 
 describe("plugin service", () => {
@@ -46,9 +58,11 @@ describe("plugin service", () => {
     const { api, warnings, release } = createApi();
     const service = createTaskWatchdogService(api as never);
 
-    await service.start({} as never);
-    setTimeout(() => release(), 25);
-    await new Promise((resolve) => setTimeout(resolve, 40));
+    const startPromise = service.start({} as never);
+    await new Promise((resolve) => setTimeout(resolve, 35));
+    release();
+    await startPromise;
+    await new Promise((resolve) => setTimeout(resolve, 30));
     await service.stop?.({} as never);
 
     expect(warnings.some((w) => w.includes("skipped overlapping service tick"))).toBe(true);
