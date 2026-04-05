@@ -87,4 +87,32 @@ describe("DefaultDetachedWorkActionExecutor", () => {
     expect(prompts.messages[0]?.text.startsWith("DWH:")).toBe(true);
     expect(prompts.messages[0]?.wakeMode).toBe("now");
   });
+
+  it("retries retryable webhook failures", async () => {
+    let attempts = 0;
+    const executor = new DefaultDetachedWorkActionExecutor(
+      {
+        post: async () => {
+          attempts += 1;
+          if (attempts < 3) throw new Error("503 upstream unavailable");
+        },
+      },
+      new InMemoryEmailSender(),
+      new InMemoryMainSessionPublisher(),
+    );
+
+    const result = await executor.execute(
+      {
+        id: "webhook-retry",
+        kind: "webhook",
+        url: "https://example.test/hook",
+        retryCount: 2,
+      },
+      event,
+      { ruleId: "r1", actionId: "webhook-retry", eventId: event.id },
+    );
+
+    expect(result.ok).toBe(true);
+    expect(attempts).toBe(3);
+  });
 });

@@ -1,4 +1,5 @@
 import { renderAlertEmail } from "./email.js";
+import { retry } from "./retry.js";
 
 import type {
   DetachedWorkActionExecutionResult,
@@ -36,6 +37,21 @@ function webhookHeaders(
   };
 }
 
+function retryCountForAction(action: DetachedWorkAlertAction): number {
+  if (action.kind === "main_session_prompt") return 1;
+  return Math.max(1, (action.retryCount ?? 0) + 1);
+}
+
+function isRetryableError(error: unknown): boolean {
+  if (!(error instanceof Error)) return true;
+  const message = error.message.toLowerCase();
+  if (message.includes("abort") || message.includes("timeout")) return true;
+  if (message.includes("429")) return true;
+  if (message.includes("502") || message.includes("503") || message.includes("504")) return true;
+  if (message.includes("network")) return true;
+  return false;
+}
+
 export class DefaultDetachedWorkActionExecutor implements DetachedWorkActionExecutor {
   constructor(
     private readonly webhookClient: DetachedWorkWebhookClient,
@@ -49,35 +65,54 @@ export class DefaultDetachedWorkActionExecutor implements DetachedWorkActionExec
     decision: DetachedWorkRuleDecision,
   ): Promise<DetachedWorkActionExecutionResult> {
     try {
-      if (action.kind === "webhook") {
-        await this.webhookClient.post({
-          url: action.url,
-          headers: webhookHeaders(action),
-          body: webhookPayload(event),
-          ...(typeof action.timeoutMs === "number" ? { timeoutMs: action.timeoutMs } : {}),
-        });
-      } else if (action.kind === "email") {
-        const rendered = await renderAlertEmail({
-          event,
-          ...(typeof action.subjectPrefix === "string"
-            ? { subjectPrefix: action.subjectPrefix }
-            : {}),
-        });
-        await this.emailSender.send({
-          provider: action.provider,
-          to: action.to,
-          ...(typeof action.from === "string" ? { from: action.from } : {}),
-          subject: rendered.subject,
-          text: rendered.text,
-          html: rendered.html,
-        });
-      } else {
-        const prefix = action.prefix ? `${action.prefix} ` : "Detached Work Health alert: ";
-        await this.mainSessionPublisher.publish({
-          text: `${prefix}${event.summary}`,
-          wakeMode: action.wakeMode ?? "next-heartbeat",
-        });
-      }
+      await retry(
+        async () => {
+          if (action.kind === "webhook") {
+            await this.webhookClient.post({
+              url: action.url,
+              headers: webhookHeaders(action),
+              body: webhookPayload(event),
+              ...(typeof action.timeoutMs === "number" ? { timeoutMs: action.timeoutMs } : {}),
+            });
+            return;
+          }
+
+          if (action.kind === "email") {
+            const rendered = await renderAlertEmail({
+              event,
+              ...(typeof action.subjectPrefix === "string"
+                ? { subjectPrefix: action.subjectPrefix }
+                : {}),
+            });
+            await this.emailSender.send({
+              provider: action.provider,
+              to: action.to,
+              ...(typeof action.from === "string" ? { from: action.from } : {}),
+              subject: rendered.subject,
+              text: rendered.text,
+              html: rendered.html,
+            });
+            return;
+          }
+
+          const prefix = action.prefix ? `${action.prefix} ` : "Detached Work Health alert: ";
+          await this.mainSessionPublisher.publish({
+            text: `${prefix}${event.summary}`,
+            wakeMode: action.wakeMode ?? "next-heartbeat",
+          });
+        },
+        {
+          attempts: retryCountForAction(action),
+          baseDelayMs: 250,
+          maxDelayMs: 5_000,
+          factor: 2,
+          jitterMs: 100,
+          shouldRetry: (error, attempt) =>
+            action.kind !== "main_session_prompt" &&
+            attempt < retryCountForAction(action) &&
+            isRetryableError(error),
+        },
+      );
 
       return {
         ok: true,
