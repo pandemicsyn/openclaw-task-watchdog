@@ -6,6 +6,7 @@ function createApi() {
   const warnings: string[] = [];
   let heartbeatRelease: (() => void) | null = null;
   let heartbeatCalls = 0;
+  let taskRunsCalls = 0;
 
   const api = {
     pluginConfig: {
@@ -27,14 +28,18 @@ function createApi() {
       tasks: {
         runs: {
           bindSession: () => ({
-            list: () => [
-              {
-                id: "task-1",
-                runtime: "cron",
-                status: "failed",
-                deliveryStatus: "delivered",
-              },
-            ],
+            list: () => {
+              taskRunsCalls += 1;
+              return [
+                {
+                  id: "task-1",
+                  runId: `run-${taskRunsCalls}`,
+                  runtime: "cron",
+                  status: "failed",
+                  deliveryStatus: "delivered",
+                },
+              ];
+            },
           }),
         },
       },
