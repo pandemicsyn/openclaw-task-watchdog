@@ -2,41 +2,28 @@
 
 Tracks deviations from `plans/detached-work-health-implementation-plan.md` during implementation.
 
-## Phase 0 — foundation
+## Current status
 
-### Deviations
+This repo now includes:
 
-1. **State shape continuity retained from early commits**
-   - `dedupe` remains `Record<string, number>` with encoded timestamp+severity for compatibility with existing state.
-   - Follow-up: migrate to explicit object state with versioning when persistence layer is added.
+- native OpenClaw plugin packaging
+- native OpenClaw runtime task ingestion
+- native main-session event publishing
+- persisted versioned plugin state
+- operator-facing commands/tool surface
+- CI for format/typecheck/test/build
 
-## Phase 1 — cron-first detector
+## Remaining deviations
 
-### Deviations
+1. **Cron-first detection remains the active runtime scope**
+   - The plugin model and config are multi-runtime-aware.
+   - Detection remains intentionally enabled for `cron` first.
+   - This is product scope, not an integration shortcut.
 
-1. **Transition detection key uses `taskId` only (not `taskId + runId`)**
-   - Keeps state minimal in current implementation.
-   - Follow-up: tighten to run-level transition tracking when run identity guarantees are wired.
+2. **Webhook signing is static-header based today**
+   - Webhook actions support a configured secret header.
+   - Canonical HMAC-style signed payloads are not implemented yet.
 
-3. **Cron-first detector is intentionally runtime-scoped even though plugin surfaces are runtime-aware**
-   - Native runtime ingestion now uses OpenClaw task runtime APIs.
-   - Detection remains cron-first by product scope, not by adapter limitation.
-
-2. **Stale-running emits per detector pass once threshold is met**
-   - Suppression is handled by rule cooldown in Phase 2.
-
-## Phase 2 — actions
-
-### Deviations
-
-1. **Webhook signing currently forwards configured static secret header**
-   - No HMAC body-signing yet.
-   - Follow-up: add canonical signed payload format if required by consumers.
-
-### Deferrals
-
-1. **Retry/backoff policy for transient webhook/provider errors**
-   - Deferred to reliability hardening pass.
-
-2. **State versioning + migration helpers**
-   - Deferred to persistence/storage phase.
+3. **Retry/backoff policy is still minimal**
+   - The plugin is production-shaped, but transient-delivery retry policy is still thin.
+   - Action configs now allow retry counts in the model/schema, but transport-level retry orchestration is not fully implemented.

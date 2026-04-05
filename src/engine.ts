@@ -67,6 +67,7 @@ export async function processAlertActions(
         ...(typeof action.secret === "string" ? { secret: action.secret } : {}),
         ...(action.headers ? { headers: action.headers } : {}),
         ...(typeof action.timeoutMs === "number" ? { timeoutMs: action.timeoutMs } : {}),
+        ...(typeof action.retryCount === "number" ? { retryCount: action.retryCount } : {}),
       };
     }
 
@@ -81,6 +82,7 @@ export async function processAlertActions(
         ...(typeof action.subjectPrefix === "string"
           ? { subjectPrefix: action.subjectPrefix }
           : {}),
+        ...(typeof action.retryCount === "number" ? { retryCount: action.retryCount } : {}),
       };
     }
 
@@ -129,10 +131,16 @@ export async function processAlertActions(
       ...(input.previousState?.dedupe ?? {}),
       ...(input.detector.nextState?.dedupe ?? {}),
     },
-    lastSeenTaskStateByTaskId: {
-      ...(input.previousState?.lastSeenTaskStateByTaskId ?? {}),
-      ...(input.detector.nextState?.lastSeenTaskStateByTaskId ?? {}),
+    lastSeenTaskStateByTaskKey: {
+      ...(input.previousState?.lastSeenTaskStateByTaskKey ?? {}),
+      ...(input.detector.nextState?.lastSeenTaskStateByTaskKey ?? {}),
     },
+    recentIncidents: [
+      ...(input.detector.nextState?.recentIncidents ?? []),
+      ...(input.previousState?.recentIncidents ?? []),
+    ]
+      .filter((event, index, arr) => arr.findIndex((other) => other.id == event.id) === index)
+      .slice(0, 20),
   };
 
   const evaluated = evaluateAlertRules({

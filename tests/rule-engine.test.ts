@@ -22,7 +22,7 @@ function event(overrides: Partial<DetachedWorkAlertEvent>): DetachedWorkAlertEve
     createdAt: NOW,
     task: {
       status: "failed",
-      deliveryStatus: "sent",
+      deliveryStatus: "delivered",
     },
     ...overrides,
   };
@@ -64,7 +64,8 @@ describe("evaluateAlertRules", () => {
         "rule-1|webhook-1|cron|task_failed|task-1|": NOW * 10 + 2,
         "rule-1|prompt-1|cron|task_failed|task-1|": NOW * 10 + 2,
       },
-      lastSeenTaskStateByTaskId: {},
+      lastSeenTaskStateByTaskKey: {},
+      recentIncidents: [],
     };
 
     const out = evaluateAlertRules({
@@ -83,7 +84,8 @@ describe("evaluateAlertRules", () => {
       dedupe: {
         "rule-1|webhook-1|cron|task_failed|task-1|": NOW * 10 + 2,
       },
-      lastSeenTaskStateByTaskId: {},
+      lastSeenTaskStateByTaskKey: {},
+      recentIncidents: [],
     };
 
     const out = evaluateAlertRules({

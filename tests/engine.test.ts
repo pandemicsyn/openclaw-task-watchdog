@@ -18,7 +18,7 @@ const event: DetachedWorkAlertEvent = {
   createdAt: Date.UTC(2026, 3, 5, 7, 0, 0),
   task: {
     status: "failed",
-    deliveryStatus: "sent",
+    deliveryStatus: "delivered",
   },
 };
 
@@ -37,15 +37,17 @@ const detector: DetachedWorkDetectorOutput = {
         recentLost: 0,
         recentDeliveryFailures: 0,
         staleRunning: 0,
+        failureStreaks: 0,
         latestNotableRuns: [event],
       },
     ],
   },
   nextState: {
     dedupe: {},
-    lastSeenTaskStateByTaskId: {
-      "task-1": "failed|sent",
+    lastSeenTaskStateByTaskKey: {
+      "task-1|": "failed|delivered",
     },
+    recentIncidents: [event],
   },
 };
 
@@ -76,7 +78,7 @@ describe("processAlertActions", () => {
     expect(output.results[0]?.ok).toBe(true);
     expect(sentEvents).toHaveLength(1);
     expect(output.nextState.dedupe).not.toEqual({});
-    expect(output.nextState.lastSeenTaskStateByTaskId["task-1"]).toBe("failed|sent");
+    expect(output.nextState.lastSeenTaskStateByTaskKey["task-1|"]).toBe("failed|delivered");
   });
 });
 
@@ -90,7 +92,7 @@ describe("runDetachedWorkPipeline", () => {
         taskId: "task-77",
         runtime: "cron",
         status: "failed",
-        deliveryStatus: "sent",
+        deliveryStatus: "delivered",
         startedAt: now - 60_000,
         endedAt: now - 1_000,
       },

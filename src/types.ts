@@ -18,10 +18,15 @@ export type DetachedWorkTaskStatus =
   | "failed"
   | "timed_out"
   | "lost"
-  | "cancelled"
-  | string;
+  | "cancelled";
 
-export type DetachedWorkDeliveryStatus = "pending" | "sent" | "failed" | "none" | string;
+export type DetachedWorkDeliveryStatus =
+  | "pending"
+  | "delivered"
+  | "session_queued"
+  | "failed"
+  | "parent_missing"
+  | "not_applicable";
 
 export type DetachedWorkTaskRun = {
   taskId: string;
@@ -49,8 +54,8 @@ export type DetachedWorkAlertEvent = {
   detail?: string;
   createdAt: number;
   task: {
-    status: string;
-    deliveryStatus: string;
+    status: DetachedWorkTaskStatus;
+    deliveryStatus: DetachedWorkDeliveryStatus;
     startedAt?: number;
     endedAt?: number;
     elapsedMs?: number;
@@ -79,6 +84,7 @@ export type DetachedWorkRuntimeHealthSnapshot = {
   recentLost: number;
   recentDeliveryFailures: number;
   staleRunning: number;
+  failureStreaks: number;
   latestNotableRuns: DetachedWorkAlertEvent[];
 };
 
@@ -90,7 +96,8 @@ export type DetachedWorkHealthSnapshot = {
 
 export type DetachedWorkHealthState = {
   dedupe: Record<string, number>;
-  lastSeenTaskStateByTaskId: Record<string, string>;
+  lastSeenTaskStateByTaskKey: Record<string, string>;
+  recentIncidents: DetachedWorkAlertEvent[];
   runtimeHealthCache?: Record<string, unknown>;
 };
 
@@ -127,6 +134,7 @@ export type DetachedWorkAlertAction =
       secret?: string;
       headers?: Record<string, string>;
       timeoutMs?: number;
+      retryCount?: number;
     }
   | {
       id: string;
@@ -136,6 +144,7 @@ export type DetachedWorkAlertAction =
       to: string[];
       from?: string;
       subjectPrefix?: string;
+      retryCount?: number;
     }
   | {
       id: string;

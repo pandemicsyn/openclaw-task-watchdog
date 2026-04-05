@@ -24,29 +24,20 @@ function findAction(
 
 function eventMatchesRule(event: DetachedWorkAlertEvent, rule: DetachedWorkAlertRule): boolean {
   if (rule.enabled === false) return false;
-
   if (!rule.eventTypes.includes(event.eventType)) return false;
-
   if (rule.runtimes && rule.runtimes.length > 0 && !rule.runtimes.includes(event.runtime)) {
     return false;
   }
-
   if (rule.minSeverity && severityRank[event.severity] < severityRank[rule.minSeverity]) {
     return false;
   }
-
   return true;
 }
 
 function dedupeKey(ruleId: string, actionId: string, event: DetachedWorkAlertEvent): string {
-  return [
-    ruleId,
-    actionId,
-    event.runtime,
-    event.eventType,
-    event.taskId,
-    event.sourceId ?? "",
-  ].join("|");
+  return [ruleId, actionId, event.runtime, event.eventType, event.taskId, event.runId ?? ""].join(
+    "|",
+  );
 }
 
 function encodeDedupeValue(sentAtMs: number, severity: DetachedWorkSeverity): number {
@@ -56,7 +47,6 @@ function encodeDedupeValue(sentAtMs: number, severity: DetachedWorkSeverity): nu
 function decodeDedupeValue(value: number): { sentAtMs: number; severity: DetachedWorkSeverity } {
   const sev = value % 10;
   const sentAtMs = Math.floor(value / 10);
-
   if (sev === severityRank.critical) return { sentAtMs, severity: "critical" };
   if (sev === severityRank.warning) return { sentAtMs, severity: "warning" };
   return { sentAtMs, severity: "info" };
@@ -68,7 +58,8 @@ export function evaluateAlertRules(
   const now = input.now ?? Date.now();
   const previousState: DetachedWorkHealthState = input.previousState ?? {
     dedupe: {},
-    lastSeenTaskStateByTaskId: {},
+    lastSeenTaskStateByTaskKey: {},
+    recentIncidents: [],
   };
 
   const dedupe = { ...previousState.dedupe };
@@ -91,13 +82,10 @@ export function evaluateAlertRules(
 
         const allowByCooldown =
           !lastSent || cooldownMs <= 0 || now - lastSent.sentAtMs >= cooldownMs;
-
         const allowByEscalation =
           !!lastSent && severityRank[event.severity] > severityRank[lastSent.severity];
 
-        if (!allowByCooldown && !allowByEscalation) {
-          continue;
-        }
+        if (!allowByCooldown && !allowByEscalation) continue;
 
         const decision: DetachedWorkRuleDecision = {
           ruleId: rule.id,

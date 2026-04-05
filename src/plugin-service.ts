@@ -12,7 +12,8 @@ export function createTaskWatchdogService(api: OpenClawPluginApi): OpenClawPlugi
   const store = createStateStore(api.runtime.state.resolveStateDir());
   let state: DetachedWorkHealthState = {
     dedupe: {},
-    lastSeenTaskStateByTaskId: {},
+    lastSeenTaskStateByTaskKey: {},
+    recentIncidents: [],
   };
 
   const runOnce = async (): Promise<void> => {

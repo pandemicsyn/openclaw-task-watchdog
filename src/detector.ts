@@ -11,6 +11,10 @@ import type {
 
 const CRON_RUNTIME: DetachedWorkRuntime = "cron";
 
+function taskKey(run: DetachedWorkTaskRun): string {
+  return `${run.taskId}|${run.runId ?? ""}`;
+}
+
 function makeStateKey(run: DetachedWorkTaskRun): string {
   return `${run.status}|${run.deliveryStatus}`;
 }
@@ -70,8 +74,28 @@ function runtimeHealthLevel(
   s: DetachedWorkRuntimeHealthSnapshot,
 ): "healthy" | "warning" | "critical" {
   if (s.recentTimedOut > 0 || s.recentLost > 0) return "critical";
-  if (s.recentFailures > 0 || s.recentDeliveryFailures > 0 || s.staleRunning > 0) return "warning";
+  if (
+    s.recentFailures > 0 ||
+    s.recentDeliveryFailures > 0 ||
+    s.staleRunning > 0 ||
+    s.failureStreaks > 0
+  ) {
+    return "warning";
+  }
   return "healthy";
+}
+
+function recentIncidents(
+  previousState: DetachedWorkHealthState,
+  events: DetachedWorkAlertEvent[],
+  limit: number,
+): DetachedWorkAlertEvent[] {
+  const merged = [...events, ...previousState.recentIncidents];
+  const deduped = new Map<string, DetachedWorkAlertEvent>();
+  for (const event of merged) {
+    if (!deduped.has(event.id)) deduped.set(event.id, event);
+  }
+  return [...deduped.values()].sort((a, b) => b.createdAt - a.createdAt).slice(0, limit);
 }
 
 export function detectDetachedWorkHealth(
@@ -80,20 +104,23 @@ export function detectDetachedWorkHealth(
   const now = input.now ?? Date.now();
   const previousState: DetachedWorkHealthState = input.previousState ?? {
     dedupe: {},
-    lastSeenTaskStateByTaskId: {},
+    lastSeenTaskStateByTaskKey: {},
+    recentIncidents: [],
   };
 
   const runs = input.runs.filter((run) => run.runtime === CRON_RUNTIME);
-  const nextLastSeen = { ...previousState.lastSeenTaskStateByTaskId };
+  const nextLastSeen = { ...previousState.lastSeenTaskStateByTaskKey };
   const events: DetachedWorkAlertEvent[] = [];
 
   const thresholds = getThresholds(CRON_RUNTIME, input.thresholdsByRuntime);
   const staleRunningMs = thresholds.staleRunningMinutes * 60_000;
   const criticalRunningMs = thresholds.criticalRunningMinutes * 60_000;
+  const lookbackStart = now - thresholds.lookbackMinutes * 60_000;
 
   for (const run of runs) {
+    const key = taskKey(run);
     const current = makeStateKey(run);
-    const previous = previousState.lastSeenTaskStateByTaskId[run.taskId];
+    const previous = previousState.lastSeenTaskStateByTaskKey[key];
     const transitioned = current !== previous;
 
     if (transitioned && run.status === "failed") {
@@ -103,7 +130,7 @@ export function detectDetachedWorkHealth(
           now,
           "task_failed",
           "warning",
-          `cron task${run.label ? ` "${run.label}"` : ""} failed`,
+          `cron task${run.label ? ` \"${run.label}\"` : ""} failed`,
         ),
       );
     }
@@ -115,7 +142,7 @@ export function detectDetachedWorkHealth(
           now,
           "task_timed_out",
           "critical",
-          `cron task${run.label ? ` "${run.label}"` : ""} timed out`,
+          `cron task${run.label ? ` \"${run.label}\"` : ""} timed out`,
         ),
       );
     }
@@ -127,7 +154,7 @@ export function detectDetachedWorkHealth(
           now,
           "task_lost",
           "critical",
-          `cron task${run.label ? ` "${run.label}"` : ""} became lost`,
+          `cron task${run.label ? ` \"${run.label}\"` : ""} became lost`,
         ),
       );
     }
@@ -140,7 +167,7 @@ export function detectDetachedWorkHealth(
           now,
           "task_stale_running",
           ms >= criticalRunningMs ? "critical" : "warning",
-          `cron task${run.label ? ` "${run.label}"` : ""} running for ${Math.floor(ms / 60_000)}m`,
+          `cron task${run.label ? ` \"${run.label}\"` : ""} running for ${Math.floor(ms / 60_000)}m`,
         ),
       );
     }
@@ -152,24 +179,66 @@ export function detectDetachedWorkHealth(
           now,
           "delivery_failed",
           "warning",
-          `cron delivery failed${run.label ? ` for "${run.label}"` : ""}`,
+          `cron delivery failed${run.label ? ` for \"${run.label}\"` : ""}`,
         ),
       );
     }
 
-    nextLastSeen[run.taskId] = current;
+    nextLastSeen[key] = current;
   }
 
+  const failedInWindow = runs.filter((run) => {
+    const terminalAt = run.endedAt ?? run.startedAt ?? 0;
+    return run.status === "failed" && terminalAt >= lookbackStart;
+  });
+  if (failedInWindow.length >= thresholds.failureStreakCount) {
+    const latest = failedInWindow[0]!;
+    events.push(
+      createEvent(
+        latest,
+        now,
+        "failure_streak",
+        "warning",
+        `cron failure streak reached ${failedInWindow.length} within ${thresholds.lookbackMinutes}m`,
+      ),
+    );
+  }
+
+  const previousFailures = previousState.recentIncidents.filter(
+    (event) =>
+      event.runtime === CRON_RUNTIME &&
+      ["task_failed", "task_timed_out", "task_lost", "failure_streak"].includes(event.eventType),
+  );
+  const currentlyHealthyTerminal = runs.some(
+    (run) => run.status === "succeeded" && run.deliveryStatus !== "failed",
+  );
+  if (previousFailures.length > 0 && currentlyHealthyTerminal) {
+    const latest = runs.find((run) => run.status === "succeeded") ?? runs[0];
+    if (latest) {
+      events.push(
+        createEvent(
+          latest,
+          now,
+          "recovered",
+          "info",
+          `cron health recovered after previous failures`,
+        ),
+      );
+    }
+  }
+
+  const incidents = recentIncidents(previousState, events, input.recentNotableLimit ?? 20);
   const runtimeSnapshot: DetachedWorkRuntimeHealthSnapshot = {
     runtime: CRON_RUNTIME,
     health: "healthy",
     active: runs.filter((run) => run.status === "running").length,
-    recentFailures: events.filter((e) => e.eventType === "task_failed").length,
-    recentTimedOut: events.filter((e) => e.eventType === "task_timed_out").length,
-    recentLost: events.filter((e) => e.eventType === "task_lost").length,
-    recentDeliveryFailures: events.filter((e) => e.eventType === "delivery_failed").length,
-    staleRunning: events.filter((e) => e.eventType === "task_stale_running").length,
-    latestNotableRuns: events.slice(0, input.recentNotableLimit ?? 20),
+    recentFailures: incidents.filter((e) => e.eventType === "task_failed").length,
+    recentTimedOut: incidents.filter((e) => e.eventType === "task_timed_out").length,
+    recentLost: incidents.filter((e) => e.eventType === "task_lost").length,
+    recentDeliveryFailures: incidents.filter((e) => e.eventType === "delivery_failed").length,
+    staleRunning: incidents.filter((e) => e.eventType === "task_stale_running").length,
+    failureStreaks: incidents.filter((e) => e.eventType === "failure_streak").length,
+    latestNotableRuns: incidents,
   };
   runtimeSnapshot.health = runtimeHealthLevel(runtimeSnapshot);
 
@@ -184,7 +253,8 @@ export function detectDetachedWorkHealth(
     snapshot,
     nextState: {
       ...previousState,
-      lastSeenTaskStateByTaskId: nextLastSeen,
+      lastSeenTaskStateByTaskKey: nextLastSeen,
+      recentIncidents: incidents,
     },
   };
 }

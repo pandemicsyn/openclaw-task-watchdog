@@ -1,6 +1,11 @@
 import { z } from "zod";
 
-import type { DetachedWorkRuntime, DetachedWorkTaskRun } from "./types.js";
+import {
+  detachedWorkDeliveryStatusSchema,
+  detachedWorkRuntimeSchema,
+  detachedWorkStatusSchema,
+} from "./config-schema.js";
+import type { DetachedWorkTaskRun } from "./types.js";
 
 const isoOrMsSchema = z.union([z.number(), z.string()]).optional();
 
@@ -20,11 +25,21 @@ const taskItemSchema = z
     createdAt: isoOrMsSchema,
     updatedAt: isoOrMsSchema,
     detail: z.string().optional(),
+    error: z.string().optional(),
+    progressSummary: z.string().optional(),
+    terminalSummary: z.string().optional(),
   })
-  .passthrough();
+  .strict()
+  .catchall(z.unknown());
 
-const tasksEnvelopeSchema = z.object({ tasks: z.array(taskItemSchema) }).passthrough();
-const itemsEnvelopeSchema = z.object({ items: z.array(taskItemSchema) }).passthrough();
+const tasksEnvelopeSchema = z
+  .object({ tasks: z.array(taskItemSchema) })
+  .strict()
+  .catchall(z.unknown());
+const itemsEnvelopeSchema = z
+  .object({ items: z.array(taskItemSchema) })
+  .strict()
+  .catchall(z.unknown());
 
 const taskListEnvelopeSchema = z.union([
   z.array(taskItemSchema),
@@ -41,15 +56,16 @@ function parseMs(value: z.infer<typeof isoOrMsSchema>): number | undefined {
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 
-function normalizeRuntime(runtime: string | undefined): DetachedWorkRuntime {
-  if (runtime === "cron" || runtime === "acp" || runtime === "subagent" || runtime === "cli") {
-    return runtime;
-  }
-  return "cli";
+function normalizeRuntime(runtime: string | undefined) {
+  return detachedWorkRuntimeSchema.catch("cli").parse(runtime);
 }
 
-function normalizeStatus(status: string | undefined, state: string | undefined): string {
-  return status ?? state ?? "unknown";
+function normalizeStatus(status: string | undefined, state: string | undefined) {
+  return detachedWorkStatusSchema.catch("queued").parse(status ?? state);
+}
+
+function normalizeDeliveryStatus(deliveryStatus: string | undefined) {
+  return detachedWorkDeliveryStatusSchema.catch("not_applicable").parse(deliveryStatus);
 }
 
 export function parseTaskRunsFromUnknown(input: unknown): DetachedWorkTaskRun[] {
@@ -64,18 +80,19 @@ export function parseTaskRunsFromUnknown(input: unknown): DetachedWorkTaskRun[] 
     const startedAt = parseMs(row.startedAt) ?? parseMs(row.createdAt);
     const endedAt = parseMs(row.endedAt) ?? parseMs(row.updatedAt);
     const taskId = row.taskId ?? row.id ?? row.runId ?? `unknown-${index}`;
+    const detail = row.detail ?? row.error ?? row.progressSummary ?? row.terminalSummary;
 
     return {
       taskId,
       runtime: normalizeRuntime(row.runtime),
       status: normalizeStatus(row.status, row.state),
-      deliveryStatus: row.deliveryStatus ?? "none",
+      deliveryStatus: normalizeDeliveryStatus(row.deliveryStatus),
       ...(typeof startedAt === "number" ? { startedAt } : {}),
       ...(typeof endedAt === "number" ? { endedAt } : {}),
       ...(typeof row.label === "string" ? { label: row.label } : {}),
       ...(typeof row.sourceId === "string" ? { sourceId: row.sourceId } : {}),
       ...(typeof row.runId === "string" ? { runId: row.runId } : {}),
-      ...(typeof row.detail === "string" ? { detail: row.detail } : {}),
+      ...(typeof detail === "string" ? { detail } : {}),
     };
   });
 }
