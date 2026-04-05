@@ -5,6 +5,7 @@ import { createTaskWatchdogService } from "../src/plugin-service.js";
 function createApi() {
   const warnings: string[] = [];
   let heartbeatRelease: (() => void) | null = null;
+  let heartbeatCalls = 0;
 
   const api = {
     pluginConfig: {
@@ -41,6 +42,10 @@ function createApi() {
         enqueueSystemEvent: () => true,
         requestHeartbeatNow: () => {},
         runHeartbeatOnce: async () => {
+          heartbeatCalls += 1;
+          if (heartbeatCalls === 1) {
+            return { status: "ok" };
+          }
           await new Promise<void>((resolve) => {
             heartbeatRelease = resolve;
           });
@@ -58,10 +63,9 @@ describe("plugin service", () => {
     const { api, warnings, release } = createApi();
     const service = createTaskWatchdogService(api as never);
 
-    const startPromise = service.start({} as never);
+    await service.start({} as never);
     await new Promise((resolve) => setTimeout(resolve, 35));
     release();
-    await startPromise;
     await new Promise((resolve) => setTimeout(resolve, 30));
     await service.stop?.({} as never);
 
