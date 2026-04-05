@@ -1,10 +1,10 @@
 # openclaw-task-watchdog
 
-Cron-first Detached Work Health detector for OpenClaw task runs.
+Detached Work Health watchdog for OpenClaw tasks.
 
-## Milestone 1 status
+## Milestone status
 
-Implemented:
+### Milestone 1 (complete)
 
 - Task runtime reader abstraction
 - Cron-only runtime filtering
@@ -16,6 +16,23 @@ Implemented:
   - `delivery_failed`
 - Health snapshot builder
 - Baseline state tracking for transition detection
-- Unit tests
+
+### Milestone 2 (complete)
+
+- Rule model + action model (webhook/email/main session prompt)
+- Rule engine for event/action matching
+- Cooldown + dedupe tracking
+- Escalation-aware suppression bypass (`warning -> critical`)
+- Action executor path for:
+  - webhook
+  - email
+  - main session prompt
+- End-to-end action processing pipeline (`processAlertActions`)
+
+## Scripts
+
+- `pnpm test`
+- `pnpm run typecheck`
+- `pnpm run build`
 
 See implementation notes in `plans/deviations-log.md`.

@@ -112,3 +112,124 @@ export type DetachedWorkDetectorOutput = {
   snapshot: DetachedWorkHealthSnapshot;
   nextState: DetachedWorkHealthState;
 };
+
+export type DetachedWorkAlertRule = {
+  id: string;
+  enabled?: boolean;
+  eventTypes: DetachedWorkEventType[];
+  runtimes?: DetachedWorkRuntime[];
+  minSeverity?: DetachedWorkSeverity;
+  actionIds: string[];
+  cooldownMinutes?: number;
+};
+
+export type DetachedWorkAlertAction =
+  | {
+      id: string;
+      kind: "webhook";
+      enabled?: boolean;
+      url: string;
+      secret?: string;
+      headers?: Record<string, string>;
+      timeoutMs?: number;
+    }
+  | {
+      id: string;
+      kind: "email";
+      enabled?: boolean;
+      provider: "resend" | "nodemailer";
+      to: string[];
+      from?: string;
+      subjectPrefix?: string;
+    }
+  | {
+      id: string;
+      kind: "main_session_prompt";
+      enabled?: boolean;
+      wakeMode?: "now" | "next-heartbeat";
+      prefix?: string;
+    };
+
+export type DetachedWorkRulesConfig = {
+  rules: DetachedWorkAlertRule[];
+  actions: DetachedWorkAlertAction[];
+};
+
+export type DetachedWorkRuleDecision = {
+  ruleId: string;
+  actionId: string;
+  eventId: string;
+};
+
+export type DetachedWorkActionExecutionSuccess = {
+  ok: true;
+  actionId: string;
+  decision: DetachedWorkRuleDecision;
+};
+
+export type DetachedWorkActionExecutionFailure = {
+  ok: false;
+  actionId: string;
+  decision: DetachedWorkRuleDecision;
+  error: string;
+};
+
+export type DetachedWorkActionExecutionResult =
+  | DetachedWorkActionExecutionSuccess
+  | DetachedWorkActionExecutionFailure;
+
+export interface DetachedWorkActionExecutor {
+  execute(
+    action: DetachedWorkAlertAction,
+    event: DetachedWorkAlertEvent,
+    decision: DetachedWorkRuleDecision,
+  ): Promise<DetachedWorkActionExecutionResult>;
+}
+
+export type DetachedWorkMainSessionPublisherInput = {
+  text: string;
+  wakeMode: "now" | "next-heartbeat";
+};
+
+export interface DetachedWorkMainSessionPublisher {
+  publish(input: DetachedWorkMainSessionPublisherInput): Promise<void>;
+}
+
+export type DetachedWorkWebhookRequest = {
+  url: string;
+  headers: Record<string, string>;
+  body: string;
+  timeoutMs?: number;
+};
+
+export interface DetachedWorkWebhookClient {
+  post(request: DetachedWorkWebhookRequest): Promise<void>;
+}
+
+export interface DetachedWorkEmailSender {
+  send(input: {
+    provider: "resend" | "nodemailer";
+    to: string[];
+    from?: string;
+    subject: string;
+    text: string;
+    html?: string;
+  }): Promise<void>;
+}
+
+export type DetachedWorkRuleEngineInput = {
+  events: DetachedWorkAlertEvent[];
+  rules: DetachedWorkAlertRule[];
+  actions: DetachedWorkAlertAction[];
+  now?: number;
+  previousState?: DetachedWorkHealthState;
+};
+
+export type DetachedWorkRuleEngineOutput = {
+  decisions: Array<{
+    decision: DetachedWorkRuleDecision;
+    event: DetachedWorkAlertEvent;
+    action: DetachedWorkAlertAction;
+  }>;
+  nextState: DetachedWorkHealthState;
+};
