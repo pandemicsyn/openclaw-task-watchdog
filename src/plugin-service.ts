@@ -47,7 +47,8 @@ export function createTaskWatchdogService(api: OpenClawPluginApi): OpenClawPlugi
       }
 
       state = await store.load(api.logger);
-      await runOnce();      timer = setInterval(() => {
+      await runOnce();
+      timer = setInterval(() => {
         void runOnce();
       }, cfg.pollIntervalMs);
 

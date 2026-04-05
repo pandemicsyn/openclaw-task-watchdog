@@ -35,7 +35,9 @@ export function createStateStore(stateDir: string) {
         return {
           dedupe: parsed.state.dedupe,
           lastSeenTaskStateByTaskId: parsed.state.lastSeenTaskStateByTaskId,
-          ...(parsed.state.runtimeHealthCache ? { runtimeHealthCache: parsed.state.runtimeHealthCache } : {}),
+          ...(parsed.state.runtimeHealthCache
+            ? { runtimeHealthCache: parsed.state.runtimeHealthCache }
+            : {}),
         };
       } catch (error) {
         logger.warn(

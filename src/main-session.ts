@@ -1,4 +1,7 @@
-import type { DetachedWorkMainSessionPublisher, DetachedWorkMainSessionPublisherInput } from "./types.js";
+import type {
+  DetachedWorkMainSessionPublisher,
+  DetachedWorkMainSessionPublisherInput,
+} from "./types.js";
 
 export type MainSessionEventSender = (input: {
   text: string;

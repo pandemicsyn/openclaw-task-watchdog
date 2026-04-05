@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import { processAlertActions, runDetachedWorkPipeline } from "../src/engine.js";
-import type { DetachedWorkAlertEvent, DetachedWorkDetectorOutput, DetachedWorkTaskRun } from "../src/types.js";
+import type {
+  DetachedWorkAlertEvent,
+  DetachedWorkDetectorOutput,
+  DetachedWorkTaskRun,
+} from "../src/types.js";
 
 const event: DetachedWorkAlertEvent = {
   id: "event-1",

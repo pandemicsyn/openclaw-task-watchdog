@@ -21,7 +21,9 @@ function AlertEmail(props: { event: DetachedWorkAlertEvent }): React.ReactElemen
       React.createElement("h2", null, `Detached Work Health — ${event.severity.toUpperCase()}`),
       React.createElement("p", null, `${event.runtime} ${event.eventType}`),
       React.createElement("p", null, event.summary),
-      React.createElement("ul", null,
+      React.createElement(
+        "ul",
+        null,
         React.createElement("li", null, `Task ID: ${event.taskId}`),
         React.createElement("li", null, `Status: ${event.task.status}`),
         React.createElement("li", null, `Delivery: ${event.task.deliveryStatus}`),

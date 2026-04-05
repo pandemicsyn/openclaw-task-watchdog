@@ -26,7 +26,9 @@ function webhookPayload(event: DetachedWorkAlertEvent): string {
   );
 }
 
-function webhookHeaders(action: Extract<DetachedWorkAlertAction, { kind: "webhook" }>): Record<string, string> {
+function webhookHeaders(
+  action: Extract<DetachedWorkAlertAction, { kind: "webhook" }>,
+): Record<string, string> {
   return {
     "content-type": "application/json",
     ...(action.secret ? { "x-openclaw-detached-work-signature": action.secret } : {}),
@@ -57,7 +59,9 @@ export class DefaultDetachedWorkActionExecutor implements DetachedWorkActionExec
       } else if (action.kind === "email") {
         const rendered = await renderAlertEmail({
           event,
-          ...(typeof action.subjectPrefix === "string" ? { subjectPrefix: action.subjectPrefix } : {}),
+          ...(typeof action.subjectPrefix === "string"
+            ? { subjectPrefix: action.subjectPrefix }
+            : {}),
         });
         await this.emailSender.send({
           provider: action.provider,
@@ -92,7 +96,12 @@ export class DefaultDetachedWorkActionExecutor implements DetachedWorkActionExec
 }
 
 export class InMemoryWebhookClient implements DetachedWorkWebhookClient {
-  public readonly requests: Array<{ url: string; headers: Record<string, string>; body: string; timeoutMs?: number }> = [];
+  public readonly requests: Array<{
+    url: string;
+    headers: Record<string, string>;
+    body: string;
+    timeoutMs?: number;
+  }> = [];
 
   public async post(request: {
     url: string;

@@ -7,7 +7,10 @@ import type {
 } from "openclaw/plugin-sdk/plugin-entry";
 
 import { runDetachedWorkPipeline } from "./engine.js";
-import { fetchTaskRunsFromRuntimeBySession, fetchTaskRunsFromRuntimeByToolContext } from "./openclaw-task-source.js";
+import {
+  fetchTaskRunsFromRuntimeBySession,
+  fetchTaskRunsFromRuntimeByToolContext,
+} from "./openclaw-task-source.js";
 import { parsePluginConfig } from "./plugin-config.js";
 import { createStateStore } from "./state-store.js";
 import { publishMainSessionEvent } from "./system-event-publisher.js";
@@ -93,7 +96,9 @@ async function runCheckForTool(
   };
 }
 
-export function createTaskWatchdogCommands(api: OpenClawPluginApi): OpenClawPluginCommandDefinition[] {
+export function createTaskWatchdogCommands(
+  api: OpenClawPluginApi,
+): OpenClawPluginCommandDefinition[] {
   return [
     {
       name: "task-watchdog-check",
@@ -112,7 +117,8 @@ export function createTaskWatchdogCommands(api: OpenClawPluginApi): OpenClawPlug
     },
     {
       name: "task-watchdog-status",
-      description: "Show Detached Work Health snapshot for current session or a specified sessionKey",
+      description:
+        "Show Detached Work Health snapshot for current session or a specified sessionKey",
       acceptsArgs: true,
       handler: async (ctx) => {
         const parsed = statusArgsSchema.parse({

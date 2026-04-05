@@ -66,13 +66,17 @@ function createEvent(
   };
 }
 
-function runtimeHealthLevel(s: DetachedWorkRuntimeHealthSnapshot): "healthy" | "warning" | "critical" {
+function runtimeHealthLevel(
+  s: DetachedWorkRuntimeHealthSnapshot,
+): "healthy" | "warning" | "critical" {
   if (s.recentTimedOut > 0 || s.recentLost > 0) return "critical";
   if (s.recentFailures > 0 || s.recentDeliveryFailures > 0 || s.staleRunning > 0) return "warning";
   return "healthy";
 }
 
-export function detectDetachedWorkHealth(input: DetachedWorkDetectorInput): DetachedWorkDetectorOutput {
+export function detectDetachedWorkHealth(
+  input: DetachedWorkDetectorInput,
+): DetachedWorkDetectorOutput {
   const now = input.now ?? Date.now();
   const previousState: DetachedWorkHealthState = input.previousState ?? {
     dedupe: {},

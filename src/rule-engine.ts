@@ -15,7 +15,10 @@ const severityRank: Record<DetachedWorkSeverity, number> = {
   critical: 3,
 };
 
-function findAction(actions: DetachedWorkAlertAction[], actionId: string): DetachedWorkAlertAction | undefined {
+function findAction(
+  actions: DetachedWorkAlertAction[],
+  actionId: string,
+): DetachedWorkAlertAction | undefined {
   return actions.find((action) => action.id === actionId);
 }
 
@@ -36,7 +39,14 @@ function eventMatchesRule(event: DetachedWorkAlertEvent, rule: DetachedWorkAlert
 }
 
 function dedupeKey(ruleId: string, actionId: string, event: DetachedWorkAlertEvent): string {
-  return [ruleId, actionId, event.runtime, event.eventType, event.taskId, event.sourceId ?? ""].join("|");
+  return [
+    ruleId,
+    actionId,
+    event.runtime,
+    event.eventType,
+    event.taskId,
+    event.sourceId ?? "",
+  ].join("|");
 }
 
 function encodeDedupeValue(sentAtMs: number, severity: DetachedWorkSeverity): number {
@@ -52,7 +62,9 @@ function decodeDedupeValue(value: number): { sentAtMs: number; severity: Detache
   return { sentAtMs, severity: "info" };
 }
 
-export function evaluateAlertRules(input: DetachedWorkRuleEngineInput): DetachedWorkRuleEngineOutput {
+export function evaluateAlertRules(
+  input: DetachedWorkRuleEngineInput,
+): DetachedWorkRuleEngineOutput {
   const now = input.now ?? Date.now();
   const previousState: DetachedWorkHealthState = input.previousState ?? {
     dedupe: {},

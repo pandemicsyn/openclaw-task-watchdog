@@ -40,9 +40,9 @@ type RuntimeTaskRunsSurface = {
   tasks: {
     runs: {
       bindSession: (params: { sessionKey: string }) => { list: () => unknown };
-      fromToolContext: (
-        ctx: Pick<OpenClawPluginToolContext, "sessionKey" | "deliveryContext">,
-      ) => { list: () => unknown };
+      fromToolContext: (ctx: Pick<OpenClawPluginToolContext, "sessionKey" | "deliveryContext">) => {
+        list: () => unknown;
+      };
     };
   };
 };

@@ -21,12 +21,7 @@ export type DetachedWorkTaskStatus =
   | "cancelled"
   | string;
 
-export type DetachedWorkDeliveryStatus =
-  | "pending"
-  | "sent"
-  | "failed"
-  | "none"
-  | string;
+export type DetachedWorkDeliveryStatus = "pending" | "sent" | "failed" | "none" | string;
 
 export type DetachedWorkTaskRun = {
   taskId: string;

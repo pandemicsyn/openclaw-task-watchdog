@@ -1,5 +1,8 @@
 import { Type } from "@sinclair/typebox";
-import { definePluginEntry, type OpenClawPluginToolContext } from "openclaw/plugin-sdk/plugin-entry";
+import {
+  definePluginEntry,
+  type OpenClawPluginToolContext,
+} from "openclaw/plugin-sdk/plugin-entry";
 import { z } from "zod";
 
 import { parsePluginConfig } from "./src/plugin-config.js";
@@ -28,9 +31,8 @@ export default definePluginEntry({
         async execute(_id, params, ctx?: OpenClawPluginToolContext) {
           const parsed = checkToolInputSchema.parse(params ?? {});
           const { createStateStore } = await import("./src/state-store.js");
-          const { fetchTaskRunsFromRuntimeBySession, fetchTaskRunsFromRuntimeByToolContext } = await import(
-            "./src/openclaw-task-source.js"
-          );
+          const { fetchTaskRunsFromRuntimeBySession, fetchTaskRunsFromRuntimeByToolContext } =
+            await import("./src/openclaw-task-source.js");
           const { runDetachedWorkPipeline } = await import("./src/engine.js");
 
           const cfg = parsePluginConfig(api.pluginConfig ?? {});

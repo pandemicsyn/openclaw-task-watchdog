@@ -18,6 +18,10 @@ Tracks deviations from `plans/detached-work-health-implementation-plan.md` durin
    - Keeps state minimal in current implementation.
    - Follow-up: tighten to run-level transition tracking when run identity guarantees are wired.
 
+3. **Cron-first detector is intentionally runtime-scoped even though plugin surfaces are runtime-aware**
+   - Native runtime ingestion now uses OpenClaw task runtime APIs.
+   - Detection remains cron-first by product scope, not by adapter limitation.
+
 2. **Stale-running emits per detector pass once threshold is met**
    - Suppression is handled by rule cooldown in Phase 2.
 
@@ -25,11 +29,7 @@ Tracks deviations from `plans/detached-work-health-implementation-plan.md` durin
 
 ### Deviations
 
-1. **Main-session prompt uses adapter function bridge**
-   - Implemented as `SystemEventMainSessionPublisher` requiring host-provided sender function.
-   - This keeps plugin/runtime boundary explicit and testable.
-
-2. **Webhook signing currently forwards configured static secret header**
+1. **Webhook signing currently forwards configured static secret header**
    - No HMAC body-signing yet.
    - Follow-up: add canonical signed payload format if required by consumers.
 

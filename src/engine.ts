@@ -41,7 +41,9 @@ export type DetachedWorkPipelineOutput = {
   actions: DetachedWorkActionEngineOutput;
 };
 
-export async function processAlertActions(input: DetachedWorkActionEngineInput): Promise<DetachedWorkActionEngineOutput> {
+export async function processAlertActions(
+  input: DetachedWorkActionEngineInput,
+): Promise<DetachedWorkActionEngineOutput> {
   const now = input.now ?? Date.now();
   const config = parseDetachedWorkConfig(input.config);
 
@@ -76,7 +78,9 @@ export async function processAlertActions(input: DetachedWorkActionEngineInput):
         to: action.to,
         ...(typeof action.enabled === "boolean" ? { enabled: action.enabled } : {}),
         ...(typeof action.from === "string" ? { from: action.from } : {}),
-        ...(typeof action.subjectPrefix === "string" ? { subjectPrefix: action.subjectPrefix } : {}),
+        ...(typeof action.subjectPrefix === "string"
+          ? { subjectPrefix: action.subjectPrefix }
+          : {}),
       };
     }
 
@@ -169,11 +173,15 @@ export async function runDetachedWorkPipeline(
     failureStreakCount?: number | undefined;
     lookbackMinutes?: number | undefined;
   }) => ({
-    ...(typeof v.staleRunningMinutes === "number" ? { staleRunningMinutes: v.staleRunningMinutes } : {}),
+    ...(typeof v.staleRunningMinutes === "number"
+      ? { staleRunningMinutes: v.staleRunningMinutes }
+      : {}),
     ...(typeof v.criticalRunningMinutes === "number"
       ? { criticalRunningMinutes: v.criticalRunningMinutes }
       : {}),
-    ...(typeof v.failureStreakCount === "number" ? { failureStreakCount: v.failureStreakCount } : {}),
+    ...(typeof v.failureStreakCount === "number"
+      ? { failureStreakCount: v.failureStreakCount }
+      : {}),
     ...(typeof v.lookbackMinutes === "number" ? { lookbackMinutes: v.lookbackMinutes } : {}),
   });
 

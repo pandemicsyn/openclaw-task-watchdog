@@ -59,9 +59,13 @@ describe("runtime task source", () => {
       },
     };
 
-    const runs = fetchTaskRunsFromRuntimeByToolContext(logger() as never, runtime as never, {
-      sessionKey: "session:1",
-    } as never);
+    const runs = fetchTaskRunsFromRuntimeByToolContext(
+      logger() as never,
+      runtime as never,
+      {
+        sessionKey: "session:1",
+      } as never,
+    );
     expect(runs[0]?.taskId).toBe("task-ctx");
   });
 });
