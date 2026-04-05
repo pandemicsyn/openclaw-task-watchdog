@@ -1,6 +1,6 @@
 # openclaw-task-watchdog
 
-`openclaw-task-watchdog` is a native OpenClaw plugin for monitoring detached work health, starting with **cron task runs**.
+`openclaw-task-watchdog` is a native OpenClaw plugin for monitoring task health, starting with **cron task runs**.
 
 It watches task execution state, detects failures and abnormal runtime conditions, and routes alerts through configurable actions such as:
 
@@ -8,7 +8,7 @@ It watches task execution state, detects failures and abnormal runtime condition
 - main-session prompts
 - email via React Email + Resend/Nodemailer
 
-This is intended for operators who want OpenClaw to notice when detached work breaks, stalls, times out, or fails to deliver.
+This is intended for operators who want OpenClaw to notice when task health breaks, stalls, times out, or fails to deliver.
 
 ---
 
@@ -136,14 +136,14 @@ At a high level, config includes:
         "id": "main-prompt",
         "kind": "main_session_prompt",
         "wakeMode": "now",
-        "prefix": "Detached Work Health:"
+        "prefix": "Task Health:"
       },
       {
         "id": "ops-email",
         "kind": "email",
         "provider": "resend",
         "to": ["ops@example.com"],
-        "subjectPrefix": "[Detached Work Health]",
+        "subjectPrefix": "[Task Health]",
         "retryCount": 2
       }
     ],
@@ -298,7 +298,7 @@ Examples of retryable conditions include:
 The plugin uses zod at important IO boundaries, including:
 
 - plugin config input
-- detached work config input
+- task health config input
 - runtime task DTO normalization
 - tool input
 - command arg parsing
@@ -336,13 +336,13 @@ Workflow file:
 This plugin is currently **cron-first** by design.
 
 **What is implemented today:**
-- cron detached-work health detection
+- cron task-health health detection
 - webhook / main-session / email actions
 
 **What is not implemented yet:**
 - ACP detection
 - subagent detection
-- CLI detached-work detection
+- CLI task-health detection
 
 The model/config supports additional runtimes:
 
@@ -359,5 +359,5 @@ But the active health detector is intentionally focused on cron as the first pro
 
 For implementation history and any remaining follow-ups, see:
 
-- `plans/detached-work-health-implementation-plan.md`
+- `plans/task-health-implementation-plan.md`
 - `plans/deviations-log.md`

@@ -1,28 +1,28 @@
 import type {
-  DetachedWorkAlertAction,
-  DetachedWorkAlertEvent,
-  DetachedWorkAlertRule,
-  DetachedWorkHealthState,
-  DetachedWorkRuleDecision,
-  DetachedWorkRuleEngineInput,
-  DetachedWorkRuleEngineOutput,
-  DetachedWorkSeverity,
+  TaskHealthAlertAction,
+  TaskHealthAlertEvent,
+  TaskHealthAlertRule,
+  TaskHealthState,
+  TaskHealthRuleDecision,
+  TaskHealthRuleEngineInput,
+  TaskHealthRuleEngineOutput,
+  TaskHealthSeverity,
 } from "./types.js";
 
-const severityRank: Record<DetachedWorkSeverity, number> = {
+const severityRank: Record<TaskHealthSeverity, number> = {
   info: 1,
   warning: 2,
   critical: 3,
 };
 
 function findAction(
-  actions: DetachedWorkAlertAction[],
+  actions: TaskHealthAlertAction[],
   actionId: string,
-): DetachedWorkAlertAction | undefined {
+): TaskHealthAlertAction | undefined {
   return actions.find((action) => action.id === actionId);
 }
 
-function eventMatchesRule(event: DetachedWorkAlertEvent, rule: DetachedWorkAlertRule): boolean {
+function eventMatchesRule(event: TaskHealthAlertEvent, rule: TaskHealthAlertRule): boolean {
   if (rule.enabled === false) return false;
   if (!rule.eventTypes.includes(event.eventType)) return false;
   if (rule.runtimes && rule.runtimes.length > 0 && !rule.runtimes.includes(event.runtime)) {
@@ -34,17 +34,17 @@ function eventMatchesRule(event: DetachedWorkAlertEvent, rule: DetachedWorkAlert
   return true;
 }
 
-function dedupeKey(ruleId: string, actionId: string, event: DetachedWorkAlertEvent): string {
+function dedupeKey(ruleId: string, actionId: string, event: TaskHealthAlertEvent): string {
   return [ruleId, actionId, event.runtime, event.eventType, event.taskId, event.runId ?? ""].join(
     "|",
   );
 }
 
-function encodeDedupeValue(sentAtMs: number, severity: DetachedWorkSeverity): number {
+function encodeDedupeValue(sentAtMs: number, severity: TaskHealthSeverity): number {
   return sentAtMs * 10 + severityRank[severity];
 }
 
-function decodeDedupeValue(value: number): { sentAtMs: number; severity: DetachedWorkSeverity } {
+function decodeDedupeValue(value: number): { sentAtMs: number; severity: TaskHealthSeverity } {
   const sev = value % 10;
   const sentAtMs = Math.floor(value / 10);
   if (sev === severityRank.critical) return { sentAtMs, severity: "critical" };
@@ -52,18 +52,16 @@ function decodeDedupeValue(value: number): { sentAtMs: number; severity: Detache
   return { sentAtMs, severity: "info" };
 }
 
-export function evaluateAlertRules(
-  input: DetachedWorkRuleEngineInput,
-): DetachedWorkRuleEngineOutput {
+export function evaluateAlertRules(input: TaskHealthRuleEngineInput): TaskHealthRuleEngineOutput {
   const now = input.now ?? Date.now();
-  const previousState: DetachedWorkHealthState = input.previousState ?? {
+  const previousState: TaskHealthState = input.previousState ?? {
     dedupe: {},
     lastSeenTaskStateByTaskKey: {},
     recentIncidents: [],
   };
 
   const dedupe = { ...previousState.dedupe };
-  const decisions: DetachedWorkRuleEngineOutput["decisions"] = [];
+  const decisions: TaskHealthRuleEngineOutput["decisions"] = [];
 
   for (const event of input.events) {
     for (const rule of input.rules) {
@@ -87,7 +85,7 @@ export function evaluateAlertRules(
 
         if (!allowByCooldown && !allowByEscalation) continue;
 
-        const decision: DetachedWorkRuleDecision = {
+        const decision: TaskHealthRuleDecision = {
           ruleId: rule.id,
           actionId,
           eventId: event.id,

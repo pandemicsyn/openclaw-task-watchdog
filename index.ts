@@ -13,7 +13,7 @@ import { publishMainSessionEvent } from "./src/system-event-publisher.js";
 export default definePluginEntry({
   id: "task-watchdog",
   name: "Task Watchdog",
-  description: "Detached Work Health monitoring and alerting for OpenClaw tasks",
+  description: "Task Health monitoring and alerting for OpenClaw tasks",
   register(api) {
     api.registerService(createTaskWatchdogService(api));
 
@@ -24,7 +24,7 @@ export default definePluginEntry({
     api.registerTool(
       {
         name: "task_watchdog_check",
-        description: "Run one Detached Work Health check against current OpenClaw tasks",
+        description: "Run one Task Health check against current OpenClaw tasks",
         parameters: Type.Object({
           dryRun: Type.Optional(Type.Boolean({ default: false })),
         }),
@@ -33,7 +33,7 @@ export default definePluginEntry({
           const { createStateStore } = await import("./src/state-store.js");
           const { fetchTaskRunsFromRuntimeBySession, fetchTaskRunsFromRuntimeByToolContext } =
             await import("./src/openclaw-task-source.js");
-          const { runDetachedWorkPipeline } = await import("./src/engine.js");
+          const { runTaskHealthPipeline } = await import("./src/engine.js");
 
           const cfg = parsePluginConfig(api.pluginConfig ?? {});
           const store = createStateStore(api.runtime.state.resolveStateDir());
@@ -45,7 +45,7 @@ export default definePluginEntry({
               })
             : fetchTaskRunsFromRuntimeBySession(api.logger, api.runtime, "main");
 
-          const out = await runDetachedWorkPipeline({
+          const out = await runTaskHealthPipeline({
             runs,
             config: cfg.detachedWork,
             previousState,

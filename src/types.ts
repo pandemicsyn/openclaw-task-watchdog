@@ -1,8 +1,8 @@
-export type DetachedWorkRuntime = "cron" | "acp" | "subagent" | "cli";
+export type TaskHealthRuntime = "cron" | "acp" | "subagent" | "cli";
 
-export type DetachedWorkSeverity = "info" | "warning" | "critical";
+export type TaskHealthSeverity = "info" | "warning" | "critical";
 
-export type DetachedWorkEventType =
+export type TaskHealthEventType =
   | "task_failed"
   | "task_timed_out"
   | "task_lost"
@@ -11,7 +11,7 @@ export type DetachedWorkEventType =
   | "failure_streak"
   | "recovered";
 
-export type DetachedWorkTaskStatus =
+export type TaskHealthTaskStatus =
   | "queued"
   | "running"
   | "succeeded"
@@ -20,7 +20,7 @@ export type DetachedWorkTaskStatus =
   | "lost"
   | "cancelled";
 
-export type DetachedWorkDeliveryStatus =
+export type TaskHealthDeliveryStatus =
   | "pending"
   | "delivered"
   | "session_queued"
@@ -28,11 +28,11 @@ export type DetachedWorkDeliveryStatus =
   | "parent_missing"
   | "not_applicable";
 
-export type DetachedWorkTaskRun = {
+export type TaskHealthTaskRun = {
   taskId: string;
-  runtime: DetachedWorkRuntime;
-  status: DetachedWorkTaskStatus;
-  deliveryStatus: DetachedWorkDeliveryStatus;
+  runtime: TaskHealthRuntime;
+  status: TaskHealthTaskStatus;
+  deliveryStatus: TaskHealthDeliveryStatus;
   startedAt?: number;
   endedAt?: number;
   label?: string;
@@ -41,11 +41,11 @@ export type DetachedWorkTaskRun = {
   detail?: string;
 };
 
-export type DetachedWorkAlertEvent = {
+export type TaskHealthAlertEvent = {
   id: string;
-  eventType: DetachedWorkEventType;
-  severity: DetachedWorkSeverity;
-  runtime: DetachedWorkRuntime;
+  eventType: TaskHealthEventType;
+  severity: TaskHealthSeverity;
+  runtime: TaskHealthRuntime;
   taskId: string;
   sourceId?: string;
   runId?: string;
@@ -54,8 +54,8 @@ export type DetachedWorkAlertEvent = {
   detail?: string;
   createdAt: number;
   task: {
-    status: DetachedWorkTaskStatus;
-    deliveryStatus: DetachedWorkDeliveryStatus;
+    status: TaskHealthTaskStatus;
+    deliveryStatus: TaskHealthDeliveryStatus;
     startedAt?: number;
     endedAt?: number;
     elapsedMs?: number;
@@ -64,19 +64,19 @@ export type DetachedWorkAlertEvent = {
   metadata?: Record<string, unknown>;
 };
 
-export type DetachedWorkThresholdConfig = {
+export type TaskHealthThresholdConfig = {
   staleRunningMinutes?: number;
   criticalRunningMinutes?: number;
   failureStreakCount?: number;
   lookbackMinutes?: number;
 };
 
-export type DetachedWorkThresholdsByRuntime = Partial<
-  Record<DetachedWorkRuntime, DetachedWorkThresholdConfig>
+export type TaskHealthThresholdsByRuntime = Partial<
+  Record<TaskHealthRuntime, TaskHealthThresholdConfig>
 >;
 
-export type DetachedWorkRuntimeHealthSnapshot = {
-  runtime: DetachedWorkRuntime;
+export type TaskHealthRuntimeHealthSnapshot = {
+  runtime: TaskHealthRuntime;
   health: "healthy" | "warning" | "critical";
   active: number;
   recentFailures: number;
@@ -85,47 +85,47 @@ export type DetachedWorkRuntimeHealthSnapshot = {
   recentDeliveryFailures: number;
   staleRunning: number;
   failureStreaks: number;
-  latestNotableRuns: DetachedWorkAlertEvent[];
+  latestNotableRuns: TaskHealthAlertEvent[];
 };
 
-export type DetachedWorkHealthSnapshot = {
+export type TaskHealthSnapshot = {
   overall: "healthy" | "warning" | "critical";
   generatedAt: number;
-  runtimes: DetachedWorkRuntimeHealthSnapshot[];
+  runtimes: TaskHealthRuntimeHealthSnapshot[];
 };
 
-export type DetachedWorkHealthState = {
+export type TaskHealthState = {
   dedupe: Record<string, number>;
   lastSeenTaskStateByTaskKey: Record<string, string>;
-  recentIncidents: DetachedWorkAlertEvent[];
+  recentIncidents: TaskHealthAlertEvent[];
   runtimeHealthCache?: Record<string, unknown>;
 };
 
-export type DetachedWorkDetectorInput = {
-  runs: DetachedWorkTaskRun[];
+export type TaskHealthDetectorInput = {
+  runs: TaskHealthTaskRun[];
   now?: number;
-  previousState?: DetachedWorkHealthState;
-  thresholdsByRuntime?: DetachedWorkThresholdsByRuntime;
+  previousState?: TaskHealthState;
+  thresholdsByRuntime?: TaskHealthThresholdsByRuntime;
   recentNotableLimit?: number;
 };
 
-export type DetachedWorkDetectorOutput = {
-  events: DetachedWorkAlertEvent[];
-  snapshot: DetachedWorkHealthSnapshot;
-  nextState: DetachedWorkHealthState;
+export type TaskHealthDetectorOutput = {
+  events: TaskHealthAlertEvent[];
+  snapshot: TaskHealthSnapshot;
+  nextState: TaskHealthState;
 };
 
-export type DetachedWorkAlertRule = {
+export type TaskHealthAlertRule = {
   id: string;
   enabled?: boolean;
-  eventTypes: DetachedWorkEventType[];
-  runtimes?: DetachedWorkRuntime[];
-  minSeverity?: DetachedWorkSeverity;
+  eventTypes: TaskHealthEventType[];
+  runtimes?: TaskHealthRuntime[];
+  minSeverity?: TaskHealthSeverity;
   actionIds: string[];
   cooldownMinutes?: number;
 };
 
-export type DetachedWorkAlertAction =
+export type TaskHealthAlertAction =
   | {
       id: string;
       kind: "webhook";
@@ -154,63 +154,63 @@ export type DetachedWorkAlertAction =
       prefix?: string;
     };
 
-export type DetachedWorkRulesConfig = {
-  rules: DetachedWorkAlertRule[];
-  actions: DetachedWorkAlertAction[];
+export type TaskHealthRulesConfig = {
+  rules: TaskHealthAlertRule[];
+  actions: TaskHealthAlertAction[];
 };
 
-export type DetachedWorkRuleDecision = {
+export type TaskHealthRuleDecision = {
   ruleId: string;
   actionId: string;
   eventId: string;
 };
 
-export type DetachedWorkActionExecutionSuccess = {
+export type TaskHealthActionExecutionSuccess = {
   ok: true;
   actionId: string;
-  decision: DetachedWorkRuleDecision;
+  decision: TaskHealthRuleDecision;
 };
 
-export type DetachedWorkActionExecutionFailure = {
+export type TaskHealthActionExecutionFailure = {
   ok: false;
   actionId: string;
-  decision: DetachedWorkRuleDecision;
+  decision: TaskHealthRuleDecision;
   error: string;
 };
 
-export type DetachedWorkActionExecutionResult =
-  | DetachedWorkActionExecutionSuccess
-  | DetachedWorkActionExecutionFailure;
+export type TaskHealthActionExecutionResult =
+  | TaskHealthActionExecutionSuccess
+  | TaskHealthActionExecutionFailure;
 
-export interface DetachedWorkActionExecutor {
+export interface TaskHealthActionExecutor {
   execute(
-    action: DetachedWorkAlertAction,
-    event: DetachedWorkAlertEvent,
-    decision: DetachedWorkRuleDecision,
-  ): Promise<DetachedWorkActionExecutionResult>;
+    action: TaskHealthAlertAction,
+    event: TaskHealthAlertEvent,
+    decision: TaskHealthRuleDecision,
+  ): Promise<TaskHealthActionExecutionResult>;
 }
 
-export type DetachedWorkMainSessionPublisherInput = {
+export type TaskHealthMainSessionPublisherInput = {
   text: string;
   wakeMode: "now" | "next-heartbeat";
 };
 
-export interface DetachedWorkMainSessionPublisher {
-  publish(input: DetachedWorkMainSessionPublisherInput): Promise<void>;
+export interface TaskHealthMainSessionPublisher {
+  publish(input: TaskHealthMainSessionPublisherInput): Promise<void>;
 }
 
-export type DetachedWorkWebhookRequest = {
+export type TaskHealthWebhookRequest = {
   url: string;
   headers: Record<string, string>;
   body: string;
   timeoutMs?: number;
 };
 
-export interface DetachedWorkWebhookClient {
-  post(request: DetachedWorkWebhookRequest): Promise<void>;
+export interface TaskHealthWebhookClient {
+  post(request: TaskHealthWebhookRequest): Promise<void>;
 }
 
-export interface DetachedWorkEmailSender {
+export interface TaskHealthEmailSender {
   send(input: {
     provider: "resend" | "nodemailer";
     to: string[];
@@ -221,19 +221,19 @@ export interface DetachedWorkEmailSender {
   }): Promise<void>;
 }
 
-export type DetachedWorkRuleEngineInput = {
-  events: DetachedWorkAlertEvent[];
-  rules: DetachedWorkAlertRule[];
-  actions: DetachedWorkAlertAction[];
+export type TaskHealthRuleEngineInput = {
+  events: TaskHealthAlertEvent[];
+  rules: TaskHealthAlertRule[];
+  actions: TaskHealthAlertAction[];
   now?: number;
-  previousState?: DetachedWorkHealthState;
+  previousState?: TaskHealthState;
 };
 
-export type DetachedWorkRuleEngineOutput = {
+export type TaskHealthRuleEngineOutput = {
   decisions: Array<{
-    decision: DetachedWorkRuleDecision;
-    event: DetachedWorkAlertEvent;
-    action: DetachedWorkAlertAction;
+    decision: TaskHealthRuleDecision;
+    event: TaskHealthAlertEvent;
+    action: TaskHealthAlertAction;
   }>;
-  nextState: DetachedWorkHealthState;
+  nextState: TaskHealthState;
 };

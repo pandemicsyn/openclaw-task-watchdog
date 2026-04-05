@@ -1,18 +1,18 @@
 import type { OpenClawPluginApi, OpenClawPluginService } from "openclaw/plugin-sdk/plugin-entry";
 
-import { runDetachedWorkPipeline } from "./engine.js";
+import { runTaskHealthPipeline } from "./engine.js";
 import { parsePluginConfig } from "./plugin-config.js";
 import { fetchTaskRunsFromRuntimeBySession } from "./openclaw-task-source.js";
 import { createStateStore } from "./state-store.js";
 import { publishMainSessionEvent } from "./system-event-publisher.js";
-import type { DetachedWorkHealthState } from "./types.js";
+import type { TaskHealthState } from "./types.js";
 
 export function createTaskWatchdogService(api: OpenClawPluginApi): OpenClawPluginService {
   let timer: NodeJS.Timeout | null = null;
   let isRunning = false;
   let skippedOverlapCount = 0;
   const store = createStateStore(api.runtime.state.resolveStateDir());
-  let state: DetachedWorkHealthState = {
+  let state: TaskHealthState = {
     dedupe: {},
     lastSeenTaskStateByTaskKey: {},
     recentIncidents: [],
@@ -35,7 +35,7 @@ export function createTaskWatchdogService(api: OpenClawPluginApi): OpenClawPlugi
       if (!cfg.enabled) return;
 
       const runs = fetchTaskRunsFromRuntimeBySession(api.logger, api.runtime, "main");
-      const out = await runDetachedWorkPipeline({
+      const out = await runTaskHealthPipeline({
         runs,
         config: cfg.detachedWork,
         previousState: state,

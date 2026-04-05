@@ -1,21 +1,21 @@
-# Detached Work Health - Implementation Plan
+# Task Health - Implementation Plan
 
 _Repo studied: `openclaw/openclaw`_
 
 **Private gist mirror:** <https://gist.github.com/pandemicsyn/3c64800f830181241b43e9ed7c6a9510>
 
-This document turns the Detached Work Health design into an implementation plan.
+This document turns the Task Health design into an implementation plan.
 
 The product frame stays the same:
 
 - **cron is the first slice**
-- but the architecture is for **detached work health**, not a one-off cron monitor
+- but the architecture is for **task health**, not a one-off cron monitor
 
 That matters because the biggest long-term wins are not only scheduled failures. They also include:
 
 - **abnormally long-running ACP jobs**
 - **stuck or lost subagents**
-- **delivery failures after successful detached work**
+- **delivery failures after successful task health**
 - **runtime pressure spikes across detached execution lanes**
 
 So the implementation plan is intentionally shaped to:
@@ -31,9 +31,9 @@ So the implementation plan is intentionally shaped to:
 
 The best first implementation is:
 
-- a plugin-backed **Detached Work Health** subsystem
+- a plugin-backed **Task Health** subsystem
 - using the existing **tasks runtime** as the initial primary signal
-- detecting notable health events from detached work task runs
+- detecting notable health events from task health task runs
 - routing those events through configurable **alert actions**
 
 ### First release goals
@@ -121,7 +121,7 @@ That makes **main session prompt** a first-class action type, not a hack.
 
 ### Existing outbound/send infrastructure
 
-Webhook and outbound messaging concepts already exist elsewhere in OpenClaw. Detached Work Health should align with those patterns rather than inventing a bespoke notification universe.
+Webhook and outbound messaging concepts already exist elsewhere in OpenClaw. Task Health should align with those patterns rather than inventing a bespoke notification universe.
 
 ---
 
@@ -197,19 +197,19 @@ That separation gives us:
 ### Runtime
 
 ```ts
-type DetachedWorkRuntime = "cron" | "acp" | "subagent" | "cli";
+type TaskHealthRuntime = "cron" | "acp" | "subagent" | "cli";
 ```
 
 ### Severity
 
 ```ts
-type DetachedWorkSeverity = "info" | "warning" | "critical";
+type TaskHealthSeverity = "info" | "warning" | "critical";
 ```
 
 ### Event type
 
 ```ts
-type DetachedWorkEventType =
+type TaskHealthEventType =
   | "task_failed"
   | "task_timed_out"
   | "task_lost"
@@ -222,11 +222,11 @@ type DetachedWorkEventType =
 ### Alert event
 
 ```ts
-type DetachedWorkAlertEvent = {
+type TaskHealthAlertEvent = {
   id: string;
-  eventType: DetachedWorkEventType;
-  severity: DetachedWorkSeverity;
-  runtime: DetachedWorkRuntime;
+  eventType: TaskHealthEventType;
+  severity: TaskHealthSeverity;
+  runtime: TaskHealthRuntime;
   taskId: string;
   sourceId?: string;
   runId?: string;
@@ -249,12 +249,12 @@ type DetachedWorkAlertEvent = {
 ### Alert rule
 
 ```ts
-type DetachedWorkAlertRule = {
+type TaskHealthAlertRule = {
   id: string;
   enabled?: boolean;
-  eventTypes: DetachedWorkEventType[];
-  runtimes?: DetachedWorkRuntime[];
-  minSeverity?: DetachedWorkSeverity;
+  eventTypes: TaskHealthEventType[];
+  runtimes?: TaskHealthRuntime[];
+  minSeverity?: TaskHealthSeverity;
   actionIds: string[];
   cooldownMinutes?: number;
 };
@@ -263,7 +263,7 @@ type DetachedWorkAlertRule = {
 ### Alert action
 
 ```ts
-type DetachedWorkAlertAction =
+type TaskHealthAlertAction =
   | {
       id: string;
       kind: "webhook";
@@ -381,7 +381,7 @@ Config needs:
 ### Provider abstraction
 
 ```ts
-type DetachedWorkEmailProvider = {
+type TaskHealthEmailProvider = {
   send(params: {
     to: string[];
     from: string;
@@ -411,7 +411,7 @@ When an alert action of type `main_session_prompt` fires:
 ### Example output
 
 ```text
-Detached Work Health alert: cron task "Morning brief" timed out after 12m. Last known detail: job execution timed out.
+Task Health alert: cron task "Morning brief" timed out after 12m. Last known detail: job execution timed out.
 ```
 
 ### Why system event is the right seam
@@ -501,15 +501,15 @@ This should be in the design from the start even if only cron uses it initially.
 ### Proposed config
 
 ```ts
-type DetachedWorkThresholdConfig = {
+type TaskHealthThresholdConfig = {
   staleRunningMinutes?: number;
   criticalRunningMinutes?: number;
   failureStreakCount?: number;
   lookbackMinutes?: number;
 };
 
-type DetachedWorkThresholdsByRuntime = Partial<
-  Record<DetachedWorkRuntime, DetachedWorkThresholdConfig>
+type TaskHealthThresholdsByRuntime = Partial<
+  Record<TaskHealthRuntime, TaskHealthThresholdConfig>
 >;
 ```
 
@@ -549,7 +549,7 @@ Suggested behavior:
 Persist a small dedupe state in plugin state:
 
 ```ts
-type DetachedWorkAlertDedupeState = {
+type TaskHealthAlertDedupeState = {
   lastSentAtByKey: Record<string, number>;
 };
 ```
@@ -583,7 +583,7 @@ A lightweight state store should keep:
 Suggested persisted items:
 
 ```ts
-type DetachedWorkHealthState = {
+type TaskHealthState = {
   dedupe: Record<string, number>;
   lastSeenTaskStateByTaskId: Record<string, string>;
   runtimeHealthCache?: Record<string, unknown>;
@@ -606,8 +606,8 @@ Even if the first ship is alert-centric, the implementation should also expose a
 ### Suggested snapshot
 
 ```ts
-type DetachedWorkRuntimeHealthSnapshot = {
-  runtime: DetachedWorkRuntime;
+type TaskHealthRuntimeHealthSnapshot = {
+  runtime: TaskHealthRuntime;
   health: "healthy" | "warning" | "critical";
   active: number;
   recentFailures: number;
@@ -615,13 +615,13 @@ type DetachedWorkRuntimeHealthSnapshot = {
   recentLost: number;
   recentDeliveryFailures: number;
   staleRunning: number;
-  latestNotableRuns: DetachedWorkAlertEvent[];
+  latestNotableRuns: TaskHealthAlertEvent[];
 };
 
-type DetachedWorkHealthSnapshot = {
+type TaskHealthSnapshot = {
   overall: "healthy" | "warning" | "critical";
   generatedAt: number;
-  runtimes: DetachedWorkRuntimeHealthSnapshot[];
+  runtimes: TaskHealthRuntimeHealthSnapshot[];
 };
 ```
 
@@ -681,11 +681,11 @@ Keep formatting separate from transport.
 Suggested payload:
 
 ```ts
-type DetachedWorkWebhookPayload = {
+type TaskHealthWebhookPayload = {
   version: 1;
-  event: DetachedWorkAlertEvent;
+  event: TaskHealthAlertEvent;
   source: {
-    product: "openclaw-detached-work-health";
+    product: "openclaw-task-health";
     generatedAt: number;
   };
 };
@@ -704,9 +704,9 @@ Webhook consumers want:
 
 ## Subject examples
 
-- `[Detached Work Health] CRITICAL cron task timed out`
-- `[Detached Work Health] WARNING cron delivery failed`
-- `[Detached Work Health] RECOVERED cron failures cleared`
+- `[Task Health] CRITICAL cron task timed out`
+- `[Task Health] WARNING cron delivery failed`
+- `[Task Health] RECOVERED cron failures cleared`
 
 ## Body contents
 
@@ -737,7 +737,7 @@ Should be:
 Example:
 
 ```text
-Detached Work Health alert: cron task "Morning brief" failed. Last detail: Discord delivery failed with Forbidden.
+Task Health alert: cron task "Morning brief" failed. Last detail: Discord delivery failed with Forbidden.
 ```
 
 Optional additions:
@@ -810,7 +810,7 @@ Add:
 - runtime-specific abnormal-duration heuristics
 
 Deliverable:
-- detached-work health starts becoming real beyond cron
+- task-health health starts becoming real beyond cron
 
 ## Phase 5 - enrichment
 
@@ -880,7 +880,7 @@ Mitigation:
 
 V1 is successful if a user/operator can:
 
-- detect when cron detached work fails, times out, is lost, or runs abnormally long
+- detect when cron task health fails, times out, is lost, or runs abnormally long
 - receive alerts through configured actions
 - choose between webhook, email, and main-session prompt
 - avoid duplicate spam through cooldowns
@@ -890,7 +890,7 @@ The broader product is successful if the same architecture can later support:
 
 - ACP abnormal long-running detection
 - subagent stuck/lost monitoring
-- cross-runtime detached-work health
+- cross-runtime task-health health
 
 without a redesign.
 
@@ -900,7 +900,7 @@ without a redesign.
 
 The implementation plan is:
 
-- build **Detached Work Health** as a tasks-driven health engine
+- build **Task Health** as a tasks-driven health engine
 - ship **cron first**
 - model alerts with **configurable actions**
 - support three first-class actions:

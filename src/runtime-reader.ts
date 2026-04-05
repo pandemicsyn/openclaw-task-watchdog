@@ -4,16 +4,16 @@ import {
   fetchTaskRunsFromRuntimeBySession,
   fetchTaskRunsFromRuntimeByToolContext,
 } from "./openclaw-task-source.js";
-import type { DetachedWorkTaskRun } from "./types.js";
+import type { TaskHealthTaskRun } from "./types.js";
 
 export interface TaskRuntimeReader {
-  listRuns(): Promise<DetachedWorkTaskRun[]>;
+  listRuns(): Promise<TaskHealthTaskRun[]>;
 }
 
 export class InMemoryTaskRuntimeReader implements TaskRuntimeReader {
-  constructor(private readonly runs: DetachedWorkTaskRun[]) {}
+  constructor(private readonly runs: TaskHealthTaskRun[]) {}
 
-  public async listRuns(): Promise<DetachedWorkTaskRun[]> {
+  public async listRuns(): Promise<TaskHealthTaskRun[]> {
     return this.runs;
   }
 }
@@ -27,7 +27,7 @@ export class OpenClawSessionTaskRuntimeReader implements TaskRuntimeReader {
     private readonly sessionKey: string,
   ) {}
 
-  public async listRuns(): Promise<DetachedWorkTaskRun[]> {
+  public async listRuns(): Promise<TaskHealthTaskRun[]> {
     return fetchTaskRunsFromRuntimeBySession(this.logger, this.runtime, this.sessionKey);
   }
 }
@@ -39,7 +39,7 @@ export class OpenClawToolContextTaskRuntimeReader implements TaskRuntimeReader {
     private readonly ctx: Pick<OpenClawPluginToolContext, "sessionKey" | "deliveryContext">,
   ) {}
 
-  public async listRuns(): Promise<DetachedWorkTaskRun[]> {
+  public async listRuns(): Promise<TaskHealthTaskRun[]> {
     return fetchTaskRunsFromRuntimeByToolContext(this.logger, this.runtime, this.ctx);
   }
 }

@@ -11,7 +11,7 @@ import {
   detachedWorkSeveritySchema,
   detachedWorkStatusSchema,
 } from "./config-schema.js";
-import type { DetachedWorkHealthState } from "./types.js";
+import type { TaskHealthState } from "./types.js";
 
 const incidentSchema = z
   .object({
@@ -67,7 +67,7 @@ const legacyStateSchema = z
   })
   .strict();
 
-const defaultState: DetachedWorkHealthState = {
+const defaultState: TaskHealthState = {
   dedupe: {},
   lastSeenTaskStateByTaskKey: {},
   recentIncidents: [],
@@ -77,7 +77,7 @@ export function createStateStore(stateDir: string) {
   const filePath = path.join(stateDir, "task-watchdog", "health-state.json");
 
   return {
-    async load(logger: PluginLogger): Promise<DetachedWorkHealthState> {
+    async load(logger: PluginLogger): Promise<TaskHealthState> {
       try {
         const raw = await readFile(filePath, "utf8");
         const json = JSON.parse(raw) as unknown;
@@ -142,7 +142,7 @@ export function createStateStore(stateDir: string) {
       }
     },
 
-    async save(logger: PluginLogger, state: DetachedWorkHealthState): Promise<void> {
+    async save(logger: PluginLogger, state: TaskHealthState): Promise<void> {
       try {
         await mkdir(path.dirname(filePath), { recursive: true });
         const payload = stateSchema.parse({ version: 2 as const, state });

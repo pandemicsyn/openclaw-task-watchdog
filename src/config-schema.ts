@@ -128,9 +128,9 @@ export const detachedWorkConfigSchema = z
   })
   .strict();
 
-export type DetachedWorkConfigInput = z.input<typeof detachedWorkConfigSchema>;
-export type DetachedWorkConfig = z.output<typeof detachedWorkConfigSchema>;
+export type TaskHealthConfigInput = z.input<typeof detachedWorkConfigSchema>;
+export type TaskHealthConfig = z.output<typeof detachedWorkConfigSchema>;
 
-export function parseDetachedWorkConfig(input: DetachedWorkConfigInput): DetachedWorkConfig {
+export function parseTaskHealthConfig(input: TaskHealthConfigInput): TaskHealthConfig {
   return detachedWorkConfigSchema.parse(input);
 }

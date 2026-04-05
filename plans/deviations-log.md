@@ -1,6 +1,6 @@
-# Detached Work Health — Deviations & Deferrals Log
+# Task Health — Deviations & Deferrals Log
 
-Tracks deviations from `plans/detached-work-health-implementation-plan.md` during implementation.
+Tracks deviations from `plans/task-health-implementation-plan.md` during implementation.
 
 ## Current status
 

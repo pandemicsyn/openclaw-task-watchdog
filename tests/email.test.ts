@@ -1,15 +1,15 @@
 import { describe, expect, it } from "vitest";
 
 import { renderAlertEmail } from "../src/email.js";
-import type { DetachedWorkAlertEvent } from "../src/types.js";
+import type { TaskHealthAlertEvent } from "../src/types.js";
 
-const event: DetachedWorkAlertEvent = {
+const event: TaskHealthAlertEvent = {
   id: "event-1",
   eventType: "task_timed_out",
   severity: "critical",
   runtime: "cron",
   taskId: "task-11",
-  title: "Detached Work Health task_timed_out",
+  title: "Task Health task_timed_out",
   summary: "cron task timed out",
   createdAt: Date.UTC(2026, 3, 5, 9, 0, 0),
   task: {
@@ -24,6 +24,6 @@ describe("renderAlertEmail", () => {
 
     expect(rendered.subject).toContain("[Watchdog]");
     expect(rendered.text).toContain("task_timed_out");
-    expect(rendered.html).toContain("Detached Work Health");
+    expect(rendered.html).toContain("Task Health");
   });
 });

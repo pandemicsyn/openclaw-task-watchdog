@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { parseDetachedWorkConfig } from "../src/config-schema.js";
+import { parseTaskHealthConfig } from "../src/config-schema.js";
 
-describe("parseDetachedWorkConfig", () => {
+describe("parseTaskHealthConfig", () => {
   it("accepts a valid config", () => {
-    const parsed = parseDetachedWorkConfig({
+    const parsed = parseTaskHealthConfig({
       thresholdsByRuntime: {
         cron: {
           staleRunningMinutes: 10,
@@ -28,7 +28,7 @@ describe("parseDetachedWorkConfig", () => {
 
   it("rejects invalid webhook URL", () => {
     expect(() =>
-      parseDetachedWorkConfig({
+      parseTaskHealthConfig({
         actions: [{ id: "w", kind: "webhook", url: "not-a-url" }],
         rules: [],
       }),

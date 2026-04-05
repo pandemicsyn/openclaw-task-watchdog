@@ -1,7 +1,7 @@
-import type { DetachedWorkWebhookClient, DetachedWorkWebhookRequest } from "./types.js";
+import type { TaskHealthWebhookClient, TaskHealthWebhookRequest } from "./types.js";
 
-export class FetchWebhookClient implements DetachedWorkWebhookClient {
-  public async post(request: DetachedWorkWebhookRequest): Promise<void> {
+export class FetchWebhookClient implements TaskHealthWebhookClient {
+  public async post(request: TaskHealthWebhookRequest): Promise<void> {
     const controller = new AbortController();
     const timeout =
       typeof request.timeoutMs === "number"

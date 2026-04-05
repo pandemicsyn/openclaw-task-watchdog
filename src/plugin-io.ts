@@ -5,7 +5,7 @@ import {
   detachedWorkRuntimeSchema,
   detachedWorkStatusSchema,
 } from "./config-schema.js";
-import type { DetachedWorkTaskRun } from "./types.js";
+import type { TaskHealthTaskRun } from "./types.js";
 
 const isoOrMsSchema = z.union([z.number(), z.string()]).optional();
 
@@ -68,7 +68,7 @@ function normalizeDeliveryStatus(deliveryStatus: string | undefined) {
   return detachedWorkDeliveryStatusSchema.catch("not_applicable").parse(deliveryStatus);
 }
 
-export function parseTaskRunsFromUnknown(input: unknown): DetachedWorkTaskRun[] {
+export function parseTaskRunsFromUnknown(input: unknown): TaskHealthTaskRun[] {
   const parsed = taskListEnvelopeSchema.parse(input);
   const rows = Array.isArray(parsed)
     ? parsed

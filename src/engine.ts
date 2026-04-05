@@ -1,51 +1,51 @@
-import { DefaultDetachedWorkActionExecutor } from "./action-executor.js";
-import { parseDetachedWorkConfig, type DetachedWorkConfigInput } from "./config-schema.js";
-import { detectDetachedWorkHealth } from "./detector.js";
+import { DefaultTaskHealthActionExecutor } from "./action-executor.js";
+import { parseTaskHealthConfig, type TaskHealthConfigInput } from "./config-schema.js";
+import { detectTaskHealth } from "./detector.js";
 import { ProviderBackedEmailSender } from "./email.js";
 import { evaluateAlertRules } from "./rule-engine.js";
 import { SystemEventMainSessionPublisher, type MainSessionEventSender } from "./main-session.js";
 import { FetchWebhookClient } from "./webhook.js";
 
 import type {
-  DetachedWorkActionExecutionResult,
-  DetachedWorkAlertEvent,
-  DetachedWorkDetectorOutput,
-  DetachedWorkHealthState,
-  DetachedWorkTaskRun,
+  TaskHealthActionExecutionResult,
+  TaskHealthAlertEvent,
+  TaskHealthDetectorOutput,
+  TaskHealthState,
+  TaskHealthTaskRun,
 } from "./types.js";
 
-export type DetachedWorkActionEngineInput = {
-  detector: DetachedWorkDetectorOutput;
-  config: DetachedWorkConfigInput;
-  previousState?: DetachedWorkHealthState;
+export type TaskHealthActionEngineInput = {
+  detector: TaskHealthDetectorOutput;
+  config: TaskHealthConfigInput;
+  previousState?: TaskHealthState;
   now?: number;
   mainSessionSystemEvent: MainSessionEventSender;
 };
 
-export type DetachedWorkActionEngineOutput = {
-  events: DetachedWorkAlertEvent[];
-  results: DetachedWorkActionExecutionResult[];
-  nextState: DetachedWorkHealthState;
+export type TaskHealthActionEngineOutput = {
+  events: TaskHealthAlertEvent[];
+  results: TaskHealthActionExecutionResult[];
+  nextState: TaskHealthState;
 };
 
-export type DetachedWorkPipelineInput = {
-  runs: DetachedWorkTaskRun[];
-  config: DetachedWorkConfigInput;
-  previousState?: DetachedWorkHealthState;
+export type TaskHealthPipelineInput = {
+  runs: TaskHealthTaskRun[];
+  config: TaskHealthConfigInput;
+  previousState?: TaskHealthState;
   now?: number;
   mainSessionSystemEvent: MainSessionEventSender;
 };
 
-export type DetachedWorkPipelineOutput = {
-  detector: DetachedWorkDetectorOutput;
-  actions: DetachedWorkActionEngineOutput;
+export type TaskHealthPipelineOutput = {
+  detector: TaskHealthDetectorOutput;
+  actions: TaskHealthActionEngineOutput;
 };
 
 export async function processAlertActions(
-  input: DetachedWorkActionEngineInput,
-): Promise<DetachedWorkActionEngineOutput> {
+  input: TaskHealthActionEngineInput,
+): Promise<TaskHealthActionEngineOutput> {
   const now = input.now ?? Date.now();
-  const config = parseDetachedWorkConfig(input.config);
+  const config = parseTaskHealthConfig(input.config);
 
   const rules = config.rules.map((rule) => ({
     id: rule.id,
@@ -124,7 +124,7 @@ export async function processAlertActions(
       : {}),
   };
 
-  const ruleStateBase: DetachedWorkHealthState = {
+  const ruleStateBase: TaskHealthState = {
     ...(input.previousState ?? input.detector.nextState),
     ...(input.detector.nextState ?? {}),
     dedupe: {
@@ -151,13 +151,13 @@ export async function processAlertActions(
     previousState: ruleStateBase,
   });
 
-  const executor = new DefaultDetachedWorkActionExecutor(
+  const executor = new DefaultTaskHealthActionExecutor(
     new FetchWebhookClient(),
     new ProviderBackedEmailSender(providerConfig),
     new SystemEventMainSessionPublisher(input.mainSessionSystemEvent),
   );
 
-  const results: DetachedWorkActionExecutionResult[] = [];
+  const results: TaskHealthActionExecutionResult[] = [];
   for (const pending of evaluated.decisions) {
     const result = await executor.execute(pending.action, pending.event, pending.decision);
     results.push(result);
@@ -170,10 +170,10 @@ export async function processAlertActions(
   };
 }
 
-export async function runDetachedWorkPipeline(
-  input: DetachedWorkPipelineInput,
-): Promise<DetachedWorkPipelineOutput> {
-  const config = parseDetachedWorkConfig(input.config);
+export async function runTaskHealthPipeline(
+  input: TaskHealthPipelineInput,
+): Promise<TaskHealthPipelineOutput> {
+  const config = parseTaskHealthConfig(input.config);
 
   const normalizeThreshold = (v: {
     staleRunningMinutes?: number | undefined;
@@ -210,7 +210,7 @@ export async function runDetachedWorkPipeline(
       }
     : undefined;
 
-  const detector = detectDetachedWorkHealth({
+  const detector = detectTaskHealth({
     runs: input.runs,
     ...(typeof input.now === "number" ? { now: input.now } : {}),
     ...(input.previousState ? { previousState: input.previousState } : {}),

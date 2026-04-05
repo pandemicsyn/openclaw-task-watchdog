@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Detached Work Health watchdog plugin for OpenClaw tasks",
+  "description": "Task Health watchdog plugin for OpenClaw tasks",
   "license": "MIT",
   "engines": {
     "node": ">=22"

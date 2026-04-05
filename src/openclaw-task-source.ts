@@ -7,7 +7,7 @@ import {
   detachedWorkRuntimeSchema,
   detachedWorkStatusSchema,
 } from "./config-schema.js";
-import type { DetachedWorkTaskRun } from "./types.js";
+import type { TaskHealthTaskRun } from "./types.js";
 
 const taskRunViewSchema = z
   .object({
@@ -29,7 +29,7 @@ const taskRunViewSchema = z
 
 const taskRunListSchema = z.array(taskRunViewSchema);
 
-function mapTaskRun(view: z.infer<typeof taskRunViewSchema>): DetachedWorkTaskRun {
+function mapTaskRun(view: z.infer<typeof taskRunViewSchema>): TaskHealthTaskRun {
   const detail = view.error ?? view.progressSummary ?? view.terminalSummary;
   return {
     taskId: view.id,
@@ -60,7 +60,7 @@ export function fetchTaskRunsFromRuntimeBySession(
   logger: PluginLogger,
   runtime: RuntimeTaskRunsSurface,
   sessionKey: string,
-): DetachedWorkTaskRun[] {
+): TaskHealthTaskRun[] {
   try {
     const bound = runtime.tasks.runs.bindSession({ sessionKey });
     const views = taskRunListSchema.parse(bound.list());
@@ -77,7 +77,7 @@ export function fetchTaskRunsFromRuntimeByToolContext(
   logger: PluginLogger,
   runtime: RuntimeTaskRunsSurface,
   ctx: Pick<OpenClawPluginToolContext, "sessionKey" | "deliveryContext">,
-): DetachedWorkTaskRun[] {
+): TaskHealthTaskRun[] {
   try {
     const bound = runtime.tasks.runs.fromToolContext(ctx);
     const views = taskRunListSchema.parse(bound.list());

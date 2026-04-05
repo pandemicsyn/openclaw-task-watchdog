@@ -3,14 +3,14 @@ import React from "react";
 import nodemailer from "nodemailer";
 import { Resend } from "resend";
 
-import type { DetachedWorkAlertEvent, DetachedWorkEmailSender } from "./types.js";
+import type { TaskHealthAlertEvent, TaskHealthEmailSender } from "./types.js";
 
-export type DetachedWorkEmailRenderInput = {
-  event: DetachedWorkAlertEvent;
+export type TaskHealthEmailRenderInput = {
+  event: TaskHealthAlertEvent;
   subjectPrefix?: string;
 };
 
-function AlertEmail(props: { event: DetachedWorkAlertEvent }): React.ReactElement {
+function AlertEmail(props: { event: TaskHealthAlertEvent }): React.ReactElement {
   const { event } = props;
   return React.createElement(
     "html",
@@ -18,7 +18,7 @@ function AlertEmail(props: { event: DetachedWorkAlertEvent }): React.ReactElemen
     React.createElement(
       "body",
       { style: { fontFamily: "ui-sans-serif, system-ui", lineHeight: "1.5" } },
-      React.createElement("h2", null, `Detached Work Health — ${event.severity.toUpperCase()}`),
+      React.createElement("h2", null, `Task Health — ${event.severity.toUpperCase()}`),
       React.createElement("p", null, `${event.runtime} ${event.eventType}`),
       React.createElement("p", null, event.summary),
       React.createElement(
@@ -33,13 +33,13 @@ function AlertEmail(props: { event: DetachedWorkAlertEvent }): React.ReactElemen
   );
 }
 
-export async function renderAlertEmail(input: DetachedWorkEmailRenderInput): Promise<{
+export async function renderAlertEmail(input: TaskHealthEmailRenderInput): Promise<{
   subject: string;
   html: string;
   text: string;
 }> {
   const { event, subjectPrefix } = input;
-  const prefix = subjectPrefix ?? "[Detached Work Health]";
+  const prefix = subjectPrefix ?? "[Task Health]";
   const subject = `${prefix} ${event.severity.toUpperCase()} ${event.runtime} ${event.eventType}`;
   const html = await render(React.createElement(AlertEmail, { event }));
   const text = [
@@ -70,7 +70,7 @@ export type NodemailerProviderConfig = {
   defaultFrom: string;
 };
 
-export class ProviderBackedEmailSender implements DetachedWorkEmailSender {
+export class ProviderBackedEmailSender implements TaskHealthEmailSender {
   private readonly resend?: Resend;
   private readonly nodemailerTransport?: nodemailer.Transporter;
 

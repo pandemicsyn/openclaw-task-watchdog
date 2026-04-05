@@ -1,10 +1,10 @@
 import type {
-  DetachedWorkRuntime,
-  DetachedWorkThresholdConfig,
-  DetachedWorkThresholdsByRuntime,
+  TaskHealthRuntime,
+  TaskHealthThresholdConfig,
+  TaskHealthThresholdsByRuntime,
 } from "./types.js";
 
-const DEFAULT_THRESHOLDS: Record<DetachedWorkRuntime, DetachedWorkThresholdConfig> = {
+const DEFAULT_THRESHOLDS: Record<TaskHealthRuntime, TaskHealthThresholdConfig> = {
   cron: {
     staleRunningMinutes: 10,
     criticalRunningMinutes: 20,
@@ -32,9 +32,9 @@ const DEFAULT_THRESHOLDS: Record<DetachedWorkRuntime, DetachedWorkThresholdConfi
 };
 
 export function getThresholds(
-  runtime: DetachedWorkRuntime,
-  overrides?: DetachedWorkThresholdsByRuntime,
-): Required<DetachedWorkThresholdConfig> {
+  runtime: TaskHealthRuntime,
+  overrides?: TaskHealthThresholdsByRuntime,
+): Required<TaskHealthThresholdConfig> {
   const merged = {
     ...DEFAULT_THRESHOLDS[runtime],
     ...(overrides?.[runtime] ?? {}),

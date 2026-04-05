@@ -1,20 +1,20 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  DefaultDetachedWorkActionExecutor,
+  DefaultTaskHealthActionExecutor,
   InMemoryEmailSender,
   InMemoryMainSessionPublisher,
   InMemoryWebhookClient,
 } from "../src/action-executor.js";
-import type { DetachedWorkAlertEvent } from "../src/types.js";
+import type { TaskHealthAlertEvent } from "../src/types.js";
 
-const event: DetachedWorkAlertEvent = {
+const event: TaskHealthAlertEvent = {
   id: "event-1",
   eventType: "task_timed_out",
   severity: "critical",
   runtime: "cron",
   taskId: "task-1",
-  title: "Detached Work Health task_timed_out",
+  title: "Task Health task_timed_out",
   summary: "cron task timed out",
   createdAt: Date.UTC(2026, 3, 5, 6, 30, 0),
   task: {
@@ -24,12 +24,12 @@ const event: DetachedWorkAlertEvent = {
   },
 };
 
-describe("DefaultDetachedWorkActionExecutor", () => {
+describe("DefaultTaskHealthActionExecutor", () => {
   it("executes webhook action", async () => {
     const webhooks = new InMemoryWebhookClient();
     const emails = new InMemoryEmailSender();
     const prompts = new InMemoryMainSessionPublisher();
-    const executor = new DefaultDetachedWorkActionExecutor(webhooks, emails, prompts);
+    const executor = new DefaultTaskHealthActionExecutor(webhooks, emails, prompts);
 
     const result = await executor.execute(
       { id: "webhook-1", kind: "webhook", url: "https://example.test/hook", secret: "s3cr3t" },
@@ -39,14 +39,14 @@ describe("DefaultDetachedWorkActionExecutor", () => {
 
     expect(result.ok).toBe(true);
     expect(webhooks.requests).toHaveLength(1);
-    expect(webhooks.requests[0]?.headers["x-openclaw-detached-work-signature"]).toBe("s3cr3t");
+    expect(webhooks.requests[0]?.headers["x-openclaw-task-health-signature"]).toBe("s3cr3t");
   });
 
   it("executes email action", async () => {
     const webhooks = new InMemoryWebhookClient();
     const emails = new InMemoryEmailSender();
     const prompts = new InMemoryMainSessionPublisher();
-    const executor = new DefaultDetachedWorkActionExecutor(webhooks, emails, prompts);
+    const executor = new DefaultTaskHealthActionExecutor(webhooks, emails, prompts);
 
     const result = await executor.execute(
       {
@@ -69,7 +69,7 @@ describe("DefaultDetachedWorkActionExecutor", () => {
     const webhooks = new InMemoryWebhookClient();
     const emails = new InMemoryEmailSender();
     const prompts = new InMemoryMainSessionPublisher();
-    const executor = new DefaultDetachedWorkActionExecutor(webhooks, emails, prompts);
+    const executor = new DefaultTaskHealthActionExecutor(webhooks, emails, prompts);
 
     const result = await executor.execute(
       {
@@ -90,7 +90,7 @@ describe("DefaultDetachedWorkActionExecutor", () => {
 
   it("retries retryable webhook failures", async () => {
     let attempts = 0;
-    const executor = new DefaultDetachedWorkActionExecutor(
+    const executor = new DefaultTaskHealthActionExecutor(
       {
         post: async () => {
           attempts += 1;

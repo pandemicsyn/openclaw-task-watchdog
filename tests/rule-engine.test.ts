@@ -2,22 +2,22 @@ import { describe, expect, it } from "vitest";
 
 import { evaluateAlertRules } from "../src/rule-engine.js";
 import type {
-  DetachedWorkAlertAction,
-  DetachedWorkAlertEvent,
-  DetachedWorkAlertRule,
-  DetachedWorkHealthState,
+  TaskHealthAlertAction,
+  TaskHealthAlertEvent,
+  TaskHealthAlertRule,
+  TaskHealthState,
 } from "../src/types.js";
 
 const NOW = Date.UTC(2026, 3, 5, 6, 0, 0);
 
-function event(overrides: Partial<DetachedWorkAlertEvent>): DetachedWorkAlertEvent {
+function event(overrides: Partial<TaskHealthAlertEvent>): TaskHealthAlertEvent {
   return {
     id: "event-1",
     eventType: "task_failed",
     severity: "warning",
     runtime: "cron",
     taskId: "task-1",
-    title: "Detached Work Health task_failed",
+    title: "Task Health task_failed",
     summary: "cron task failed",
     createdAt: NOW,
     task: {
@@ -28,7 +28,7 @@ function event(overrides: Partial<DetachedWorkAlertEvent>): DetachedWorkAlertEve
   };
 }
 
-const rules: DetachedWorkAlertRule[] = [
+const rules: TaskHealthAlertRule[] = [
   {
     id: "rule-1",
     eventTypes: ["task_failed", "task_timed_out"],
@@ -39,7 +39,7 @@ const rules: DetachedWorkAlertRule[] = [
   },
 ];
 
-const actions: DetachedWorkAlertAction[] = [
+const actions: TaskHealthAlertAction[] = [
   { id: "webhook-1", kind: "webhook", url: "https://example.test/hook" },
   { id: "prompt-1", kind: "main_session_prompt" },
   { id: "email-1", kind: "email", provider: "resend", to: ["ops@example.com"] },
@@ -59,7 +59,7 @@ describe("evaluateAlertRules", () => {
   });
 
   it("enforces cooldown dedupe", () => {
-    const previousState: DetachedWorkHealthState = {
+    const previousState: TaskHealthState = {
       dedupe: {
         "rule-1|webhook-1|cron|task_failed|task-1|": NOW * 10 + 2,
         "rule-1|prompt-1|cron|task_failed|task-1|": NOW * 10 + 2,
@@ -80,7 +80,7 @@ describe("evaluateAlertRules", () => {
   });
 
   it("allows escalation to critical inside cooldown", () => {
-    const previousState: DetachedWorkHealthState = {
+    const previousState: TaskHealthState = {
       dedupe: {
         "rule-1|webhook-1|cron|task_failed|task-1|": NOW * 10 + 2,
       },

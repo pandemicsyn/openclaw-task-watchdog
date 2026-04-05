@@ -1,19 +1,19 @@
 import { describe, expect, it } from "vitest";
 
-import { processAlertActions, runDetachedWorkPipeline } from "../src/engine.js";
+import { processAlertActions, runTaskHealthPipeline } from "../src/engine.js";
 import type {
-  DetachedWorkAlertEvent,
-  DetachedWorkDetectorOutput,
-  DetachedWorkTaskRun,
+  TaskHealthAlertEvent,
+  TaskHealthDetectorOutput,
+  TaskHealthTaskRun,
 } from "../src/types.js";
 
-const event: DetachedWorkAlertEvent = {
+const event: TaskHealthAlertEvent = {
   id: "event-1",
   eventType: "task_failed",
   severity: "warning",
   runtime: "cron",
   taskId: "task-1",
-  title: "Detached Work Health task_failed",
+  title: "Task Health task_failed",
   summary: "cron task failed",
   createdAt: Date.UTC(2026, 3, 5, 7, 0, 0),
   task: {
@@ -22,7 +22,7 @@ const event: DetachedWorkAlertEvent = {
   },
 };
 
-const detector: DetachedWorkDetectorOutput = {
+const detector: TaskHealthDetectorOutput = {
   events: [event],
   snapshot: {
     overall: "warning",
@@ -82,12 +82,12 @@ describe("processAlertActions", () => {
   });
 });
 
-describe("runDetachedWorkPipeline", () => {
+describe("runTaskHealthPipeline", () => {
   it("detects cron failure and emits configured prompt action", async () => {
     const sentEvents: Array<{ text: string; mode: "now" | "next-heartbeat" }> = [];
     const now = Date.UTC(2026, 3, 5, 8, 0, 0);
 
-    const runs: DetachedWorkTaskRun[] = [
+    const runs: TaskHealthTaskRun[] = [
       {
         taskId: "task-77",
         runtime: "cron",
@@ -98,7 +98,7 @@ describe("runDetachedWorkPipeline", () => {
       },
     ];
 
-    const out = await runDetachedWorkPipeline({
+    const out = await runTaskHealthPipeline({
       runs,
       config: {
         actions: [{ id: "prompt-1", kind: "main_session_prompt", wakeMode: "now" }],

@@ -2,23 +2,23 @@ import { renderAlertEmail } from "./email.js";
 import { retry } from "./retry.js";
 
 import type {
-  DetachedWorkActionExecutionResult,
-  DetachedWorkActionExecutor,
-  DetachedWorkAlertAction,
-  DetachedWorkAlertEvent,
-  DetachedWorkEmailSender,
-  DetachedWorkMainSessionPublisher,
-  DetachedWorkRuleDecision,
-  DetachedWorkWebhookClient,
+  TaskHealthActionExecutionResult,
+  TaskHealthActionExecutor,
+  TaskHealthAlertAction,
+  TaskHealthAlertEvent,
+  TaskHealthEmailSender,
+  TaskHealthMainSessionPublisher,
+  TaskHealthRuleDecision,
+  TaskHealthWebhookClient,
 } from "./types.js";
 
-function webhookPayload(event: DetachedWorkAlertEvent): string {
+function webhookPayload(event: TaskHealthAlertEvent): string {
   return JSON.stringify(
     {
       version: 1,
       event,
       source: {
-        product: "openclaw-detached-work-health",
+        product: "openclaw-task-health",
         generatedAt: Date.now(),
       },
     },
@@ -28,16 +28,16 @@ function webhookPayload(event: DetachedWorkAlertEvent): string {
 }
 
 function webhookHeaders(
-  action: Extract<DetachedWorkAlertAction, { kind: "webhook" }>,
+  action: Extract<TaskHealthAlertAction, { kind: "webhook" }>,
 ): Record<string, string> {
   return {
     "content-type": "application/json",
-    ...(action.secret ? { "x-openclaw-detached-work-signature": action.secret } : {}),
+    ...(action.secret ? { "x-openclaw-task-health-signature": action.secret } : {}),
     ...(action.headers ?? {}),
   };
 }
 
-function retryCountForAction(action: DetachedWorkAlertAction): number {
+function retryCountForAction(action: TaskHealthAlertAction): number {
   if (action.kind === "main_session_prompt") return 1;
   return Math.max(1, (action.retryCount ?? 0) + 1);
 }
@@ -52,18 +52,18 @@ function isRetryableError(error: unknown): boolean {
   return false;
 }
 
-export class DefaultDetachedWorkActionExecutor implements DetachedWorkActionExecutor {
+export class DefaultTaskHealthActionExecutor implements TaskHealthActionExecutor {
   constructor(
-    private readonly webhookClient: DetachedWorkWebhookClient,
-    private readonly emailSender: DetachedWorkEmailSender,
-    private readonly mainSessionPublisher: DetachedWorkMainSessionPublisher,
+    private readonly webhookClient: TaskHealthWebhookClient,
+    private readonly emailSender: TaskHealthEmailSender,
+    private readonly mainSessionPublisher: TaskHealthMainSessionPublisher,
   ) {}
 
   public async execute(
-    action: DetachedWorkAlertAction,
-    event: DetachedWorkAlertEvent,
-    decision: DetachedWorkRuleDecision,
-  ): Promise<DetachedWorkActionExecutionResult> {
+    action: TaskHealthAlertAction,
+    event: TaskHealthAlertEvent,
+    decision: TaskHealthRuleDecision,
+  ): Promise<TaskHealthActionExecutionResult> {
     try {
       await retry(
         async () => {
@@ -95,7 +95,7 @@ export class DefaultDetachedWorkActionExecutor implements DetachedWorkActionExec
             return;
           }
 
-          const prefix = action.prefix ? `${action.prefix} ` : "Detached Work Health alert: ";
+          const prefix = action.prefix ? `${action.prefix} ` : "Task Health alert: ";
           await this.mainSessionPublisher.publish({
             text: `${prefix}${event.summary}`,
             wakeMode: action.wakeMode ?? "next-heartbeat",
@@ -130,7 +130,7 @@ export class DefaultDetachedWorkActionExecutor implements DetachedWorkActionExec
   }
 }
 
-export class InMemoryWebhookClient implements DetachedWorkWebhookClient {
+export class InMemoryWebhookClient implements TaskHealthWebhookClient {
   public readonly requests: Array<{
     url: string;
     headers: Record<string, string>;
@@ -148,7 +148,7 @@ export class InMemoryWebhookClient implements DetachedWorkWebhookClient {
   }
 }
 
-export class InMemoryEmailSender implements DetachedWorkEmailSender {
+export class InMemoryEmailSender implements TaskHealthEmailSender {
   public readonly deliveries: Array<{
     provider: "resend" | "nodemailer";
     to: string[];
@@ -170,7 +170,7 @@ export class InMemoryEmailSender implements DetachedWorkEmailSender {
   }
 }
 
-export class InMemoryMainSessionPublisher implements DetachedWorkMainSessionPublisher {
+export class InMemoryMainSessionPublisher implements TaskHealthMainSessionPublisher {
   public readonly messages: Array<{ text: string; wakeMode: "now" | "next-heartbeat" }> = [];
 
   public async publish(input: { text: string; wakeMode: "now" | "next-heartbeat" }): Promise<void> {

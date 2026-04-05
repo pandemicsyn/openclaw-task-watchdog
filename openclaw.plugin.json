@@ -1,7 +1,7 @@
 {
   "id": "task-watchdog",
   "name": "Task Watchdog",
-  "description": "Detached Work Health monitoring and alerting for OpenClaw tasks",
+  "description": "Task Health monitoring and alerting for OpenClaw tasks",
   "version": "0.1.0",
   "configSchema": {
     "type": "object",

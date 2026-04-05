@@ -1,25 +1,25 @@
 import { getThresholds } from "./config.js";
 import type {
-  DetachedWorkAlertEvent,
-  DetachedWorkDetectorInput,
-  DetachedWorkDetectorOutput,
-  DetachedWorkHealthState,
-  DetachedWorkRuntime,
-  DetachedWorkRuntimeHealthSnapshot,
-  DetachedWorkTaskRun,
+  TaskHealthAlertEvent,
+  TaskHealthDetectorInput,
+  TaskHealthDetectorOutput,
+  TaskHealthState,
+  TaskHealthRuntime,
+  TaskHealthRuntimeHealthSnapshot,
+  TaskHealthTaskRun,
 } from "./types.js";
 
-const CRON_RUNTIME: DetachedWorkRuntime = "cron";
+const CRON_RUNTIME: TaskHealthRuntime = "cron";
 
-function taskKey(run: DetachedWorkTaskRun): string {
+function taskKey(run: TaskHealthTaskRun): string {
   return `${run.taskId}|${run.runId ?? ""}`;
 }
 
-function makeStateKey(run: DetachedWorkTaskRun): string {
+function makeStateKey(run: TaskHealthTaskRun): string {
   return `${run.status}|${run.deliveryStatus}`;
 }
 
-function elapsedMs(run: DetachedWorkTaskRun, now: number): number | undefined {
+function elapsedMs(run: TaskHealthTaskRun, now: number): number | undefined {
   if (!run.startedAt) return undefined;
   const end = run.endedAt ?? now;
   return Math.max(0, end - run.startedAt);
@@ -32,15 +32,15 @@ function eventId(parts: Record<string, string | number | undefined>): string {
 }
 
 function createEvent(
-  run: DetachedWorkTaskRun,
+  run: TaskHealthTaskRun,
   now: number,
-  eventType: DetachedWorkAlertEvent["eventType"],
-  severity: DetachedWorkAlertEvent["severity"],
+  eventType: TaskHealthAlertEvent["eventType"],
+  severity: TaskHealthAlertEvent["severity"],
   summary: string,
-): DetachedWorkAlertEvent {
+): TaskHealthAlertEvent {
   const ms = elapsedMs(run, now);
 
-  const task: DetachedWorkAlertEvent["task"] = {
+  const task: TaskHealthAlertEvent["task"] = {
     status: run.status,
     deliveryStatus: run.deliveryStatus,
     ...(typeof run.startedAt === "number" ? { startedAt: run.startedAt } : {}),
@@ -62,7 +62,7 @@ function createEvent(
     taskId: run.taskId,
     ...(typeof run.sourceId === "string" ? { sourceId: run.sourceId } : {}),
     ...(typeof run.runId === "string" ? { runId: run.runId } : {}),
-    title: `Detached Work Health ${eventType}`,
+    title: `Task Health ${eventType}`,
     summary,
     ...(typeof run.detail === "string" ? { detail: run.detail } : {}),
     createdAt: now,
@@ -71,7 +71,7 @@ function createEvent(
 }
 
 function runtimeHealthLevel(
-  s: DetachedWorkRuntimeHealthSnapshot,
+  s: TaskHealthRuntimeHealthSnapshot,
 ): "healthy" | "warning" | "critical" {
   if (s.recentTimedOut > 0 || s.recentLost > 0) return "critical";
   if (
@@ -86,23 +86,21 @@ function runtimeHealthLevel(
 }
 
 function recentIncidents(
-  previousState: DetachedWorkHealthState,
-  events: DetachedWorkAlertEvent[],
+  previousState: TaskHealthState,
+  events: TaskHealthAlertEvent[],
   limit: number,
-): DetachedWorkAlertEvent[] {
+): TaskHealthAlertEvent[] {
   const merged = [...events, ...previousState.recentIncidents];
-  const deduped = new Map<string, DetachedWorkAlertEvent>();
+  const deduped = new Map<string, TaskHealthAlertEvent>();
   for (const event of merged) {
     if (!deduped.has(event.id)) deduped.set(event.id, event);
   }
   return [...deduped.values()].sort((a, b) => b.createdAt - a.createdAt).slice(0, limit);
 }
 
-export function detectDetachedWorkHealth(
-  input: DetachedWorkDetectorInput,
-): DetachedWorkDetectorOutput {
+export function detectTaskHealth(input: TaskHealthDetectorInput): TaskHealthDetectorOutput {
   const now = input.now ?? Date.now();
-  const previousState: DetachedWorkHealthState = input.previousState ?? {
+  const previousState: TaskHealthState = input.previousState ?? {
     dedupe: {},
     lastSeenTaskStateByTaskKey: {},
     recentIncidents: [],
@@ -110,7 +108,7 @@ export function detectDetachedWorkHealth(
 
   const runs = input.runs.filter((run) => run.runtime === CRON_RUNTIME);
   const nextLastSeen = { ...previousState.lastSeenTaskStateByTaskKey };
-  const events: DetachedWorkAlertEvent[] = [];
+  const events: TaskHealthAlertEvent[] = [];
 
   const thresholds = getThresholds(CRON_RUNTIME, input.thresholdsByRuntime);
   const staleRunningMs = thresholds.staleRunningMinutes * 60_000;
@@ -228,7 +226,7 @@ export function detectDetachedWorkHealth(
   }
 
   const incidents = recentIncidents(previousState, events, input.recentNotableLimit ?? 20);
-  const runtimeSnapshot: DetachedWorkRuntimeHealthSnapshot = {
+  const runtimeSnapshot: TaskHealthRuntimeHealthSnapshot = {
     runtime: CRON_RUNTIME,
     health: "healthy",
     active: runs.filter((run) => run.status === "running").length,

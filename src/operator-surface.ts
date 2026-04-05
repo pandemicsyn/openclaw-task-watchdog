@@ -6,7 +6,7 @@ import type {
   OpenClawPluginToolContext,
 } from "openclaw/plugin-sdk/plugin-entry";
 
-import { runDetachedWorkPipeline } from "./engine.js";
+import { runTaskHealthPipeline } from "./engine.js";
 import {
   fetchTaskRunsFromRuntimeBySession,
   fetchTaskRunsFromRuntimeByToolContext,
@@ -14,7 +14,7 @@ import {
 import { parsePluginConfig } from "./plugin-config.js";
 import { createStateStore } from "./state-store.js";
 import { publishMainSessionEvent } from "./system-event-publisher.js";
-import type { DetachedWorkHealthSnapshot } from "./types.js";
+import type { TaskHealthSnapshot } from "./types.js";
 
 const checkArgsSchema = z
   .object({
@@ -40,7 +40,7 @@ function parseKeyValueArgs(raw: string | undefined): Record<string, string> {
   return out;
 }
 
-function snapshotText(snapshot: DetachedWorkHealthSnapshot): string {
+function snapshotText(snapshot: TaskHealthSnapshot): string {
   const runtime = snapshot.runtimes[0];
   if (!runtime) return `overall=${snapshot.overall} generatedAt=${snapshot.generatedAt}`;
 
@@ -73,7 +73,7 @@ async function runCheckForTool(
       })
     : fetchTaskRunsFromRuntimeBySession(api.logger, api.runtime, "main");
 
-  const out = await runDetachedWorkPipeline({
+  const out = await runTaskHealthPipeline({
     runs,
     config: cfg.detachedWork,
     previousState,
@@ -102,7 +102,7 @@ export function createTaskWatchdogCommands(
   return [
     {
       name: "task-watchdog-check",
-      description: "Run Detached Work Health check now",
+      description: "Run Task Health check now",
       acceptsArgs: true,
       handler: async (ctx) => {
         const parsed = checkArgsSchema.parse({
@@ -117,8 +117,7 @@ export function createTaskWatchdogCommands(
     },
     {
       name: "task-watchdog-status",
-      description:
-        "Show Detached Work Health snapshot for current session or a specified sessionKey",
+      description: "Show Task Health snapshot for current session or a specified sessionKey",
       acceptsArgs: true,
       handler: async (ctx) => {
         const parsed = statusArgsSchema.parse({
@@ -130,7 +129,7 @@ export function createTaskWatchdogCommands(
         const store = createStateStore(api.runtime.state.resolveStateDir());
         const previousState = await store.load(api.logger);
         const runs = fetchTaskRunsFromRuntimeBySession(api.logger, api.runtime, sessionKey);
-        const out = await runDetachedWorkPipeline({
+        const out = await runTaskHealthPipeline({
           runs,
           config: cfg.detachedWork,
           previousState,
